@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Data Collection Portal</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Material 3 Custom Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            m3: {
+              primary: '#415f91',
+              onPrimary: '#ffffff',
+              primaryContainer: '#d6e3ff',
+              onPrimaryContainer: '#001b3e',
+              secondary: '#565f71',
+              onSecondary: '#ffffff',
+              secondaryContainer: '#dae2f9',
+              onSecondaryContainer: '#131c2b',
+              surface: '#f9f9ff',
+              onSurface: '#191c20',
+              surfaceVariant: '#e0e2ec',
+              onSurfaceVariant: '#44474e',
+              error: '#ba1a1a',
+              onError: '#ffffff',
+              errorContainer: '#ffdad6',
+              onErrorContainer: '#410002',
+              success: '#0b6b3d',
+              successContainer: '#9cf6b9',
+              onSuccessContainer: '#00210e'
+            }
+          },
+          borderRadius: {
+            '4xl': '2rem',
+            '5xl': '2.5rem',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #f0f2f5;
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    /* Smooth transitions for Material feel */
+    * {
+      transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-duration: 200ms;
+    }
+  </style>
+
+  <!-- Import Maps for React & Modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.344.0"
+      }
+    }
+  </script>
+
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="text-m3-onSurface">
+  <div id="root"></div>
+
+  <!-- React Code -->
+  <script type="text/babel" data-type="module">
+    import React, { useState, useEffect } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, addDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+    import { CheckCircle, XCircle, List, DollarSign, Settings, Users, FileText, ArrowRight, LogOut, CheckSquare, Eye, CreditCard, Globe } from 'lucide-react';
+
+    // ==========================================
+    // 🔴 🔴 🔴 IMPORTANT: PUT YOUR FIREBASE CONFIG HERE 🔴 🔴 🔴
+    // Replace the empty object {} below with your actual Firebase config.
+    // ==========================================
+    const userFirebaseConfig = {
+      // apiKey: "AIzaSy...",
+      // authDomain: "your-project.firebaseapp.com",
+      // projectId: "your-project",
+      // storageBucket: "your-project.appspot.com",
+      // messagingSenderId: "123456789",
+      // appId: "1:123456789:web:abcdef"
+    };
+
+    const firebaseConfig = Object.keys(userFirebaseConfig).length > 0 
+      ? userFirebaseConfig 
+      : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {});
+      
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+    // Helper for Strict Paths
+    const getPublicCollection = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
+    const getPublicDoc = (colName, docId) => doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
+
+    // ==========================================
+    // Translation Dictionary
+    // ==========================================
+    const translations = {
+      portalName: { bn: "ডাটা পোর্টাল", en: "Data Portal" },
+      loading: { bn: "লোড হচ্ছে...", en: "Loading..." },
+      welcome: { bn: "পোর্টাল-এ স্বাগতম", en: "Welcome to Portal" },
+      adminHint: { bn: "অ্যাডমিন প্যানেল দেখতে ইউজারনেম 'admin' দিন। যেকোনো নতুন ইউজারনেম ও পাসওয়ার্ড দিয়ে একাউন্ট তৈরি করতে পারবেন।", en: "Use username 'admin' for Admin Panel. Create a new account using any username and password." },
+      username: { bn: "ইউজারনেম", en: "Username" },
+      password: { bn: "পাসওয়ার্ড (Password)", en: "Password" },
+      uid: { bn: "ইউআইডি (UID)", en: "UID" },
+      loginBtn: { bn: "লগইন / একাউন্ট খুলুন", en: "Login / Register" },
+      processing: { bn: "প্রসেসিং...", en: "Processing..." },
+      wrongPass: { bn: "ভুল পাসওয়ার্ড! আবার চেষ্টা করুন।", en: "Wrong password! Try again." },
+      loginErr: { bn: "লগইন করতে সমস্যা হয়েছে।", en: "Login error occurred." },
+      loginModeTitle: { bn: "লগইন করুন", en: "Login to Account" },
+      registerModeTitle: { bn: "নতুন একাউন্ট খুলুন", en: "Create New Account" },
+      switchToRegister: { bn: "একাউন্ট নেই? রেজিস্ট্রেশন করুন", en: "No account? Register here" },
+      switchToLogin: { bn: "একাউন্ট আছে? লগইন করুন", en: "Have an account? Login here" },
+      registerBtn: { bn: "রেজিস্ট্রেশন করুন", en: "Register" },
+      loginOnlyBtn: { bn: "লগইন করুন", en: "Login" },
+      userNotFound: { bn: "এই ইউজারনেমে কোনো একাউন্ট নেই!", en: "No account found with this username!" },
+      userExists: { bn: "এই ইউজারনেমটি আগে থেকেই ব্যবহৃত!", en: "Username already taken!" },
+      adminView: { bn: "অ্যাডমিন ভিউ", en: "Admin View" },
+      userView: { bn: "ইউজার ভিউ", en: "User View" },
+      dataSubmit: { bn: "ডাটা সাবমিট", en: "Submit Data" },
+      subHistory: { bn: "সাবমিশন হিস্ট্রি", en: "Submission History" },
+      withdraw: { bn: "উত্তোলন", en: "Withdraw" },
+      newSubmit: { bn: "নতুন ডাটা সাবমিট করুন", en: "Submit New Data" },
+      smartPaste: { bn: "স্মার্ট পেস্ট", en: "Smart Paste" },
+      reset: { bn: "রিসেট", en: "Reset" },
+      catSelect: { bn: "ক্যাটাগরি সিলেক্ট করুন", en: "Select Category" },
+      each: { bn: "প্রতিটি:", en: "Each:" },
+      enterDataInfo: { bn: "আপনার ডাটা দিন (গুগল শিটের মতো সরাসরি বক্সে লিখতে পারেন বা পেস্ট করতে পারেন)", en: "Enter your data (type directly or paste like Google Sheets)" },
+      dupWarning: { bn: "* ডুপ্লিকেট ডাটা অটোমেটিক রিমুভ হয়ে যাবে।", en: "* Duplicate data will be removed automatically." },
+      submitBtn: { bn: "সাবমিট করুন", en: "Submit" },
+      noDataErr: { bn: "কোনো ডাটা পাওয়া যায়নি। দয়া করে শিট পূরণ করুন।", en: "No data found. Please fill the sheet." },
+      resetSuccess: { bn: "শিট সম্পূর্ণ রিসেট করা হয়েছে।", en: "Sheet has been completely reset." },
+      pasteInstruction: { bn: "এখানে আপনার এক্সেল বা গুগল শিটের ডাটা কপি করে পেস্ট করুন।", en: "Copy and paste your Excel or Google Sheets data here." },
+      cancel: { bn: "বাতিল", en: "Cancel" },
+      apply: { bn: "এপ্লাই করুন", en: "Apply" },
+      subList: { bn: "আপনার সাবমিশন সমূহ", en: "Your Submissions" },
+      noSub: { bn: "কোনো সাবমিশন পাওয়া যায়নি।", en: "No submissions found." },
+      totalData: { bn: "মোট ডাটা:", en: "Total Data:" },
+      date: { bn: "তারিখ:", en: "Date:" },
+      accepted: { bn: "একসেপ্ট:", en: "Accepted:" },
+      rejected: { bn: "রিজেক্ট:", en: "Rejected:" },
+      income: { bn: "আয়:", en: "Income:" },
+      details: { bn: "বিস্তারিত", en: "Details" },
+      subDetails: { bn: "সাবমিশন বিস্তারিত", en: "Submission Details" },
+      status: { bn: "স্ট্যাটাস", en: "Status" },
+      payMethod: { bn: "পেমেন্ট মেথড সেটিং", en: "Payment Method Setting" },
+      method: { bn: "মাধ্যম", en: "Method" },
+      accNo: { bn: "একাউন্ট নাম্বার", en: "Account Number" },
+      save: { bn: "সেভ করুন", en: "Save" },
+      withdrawMoney: { bn: "টাকা উত্তোলন", en: "Withdraw Money" },
+      withdrawBal: { bn: "উত্তোলনযোগ্য ব্যালেন্স", en: "Withdrawable Balance" },
+      amount: { bn: "পরিমাণ (৳)", en: "Amount (৳)" },
+      minAmnt: { bn: "কমপক্ষে ১০০ টাকা", en: "Min. 100 Taka" },
+      withdrawAll: { bn: "সব তুলুন", en: "Withdraw All" },
+      sendReq: { bn: "উইথড্র রিকোয়েস্ট পাঠান", en: "Send Withdraw Request" },
+      withdrawHist: { bn: "উত্তোলনের ইতিহাস", en: "Withdrawal History" },
+      noRecord: { bn: "কোনো রেকর্ড নেই।", en: "No records found." },
+      pendWork: { bn: "অপেক্ষমান কাজ", en: "Pending Work" },
+      userList: { bn: "ইউজার লিস্ট", en: "User List" },
+      withReq: { bn: "উত্তোলন রিকোয়েস্ট", en: "Withdraw Requests" },
+      settings: { bn: "সেটিংস", en: "Settings" },
+      adminSubList: { bn: "সাবমিশন লিস্ট", en: "Submission List" },
+      reviewBtn: { bn: "রিভিউ করুন", en: "Review" },
+      paidComp: { bn: "পেমেন্ট সম্পন্ন", en: "Payment Complete" },
+      reviewTitle: { bn: "রিভিউ:", en: "Review:" },
+      cat: { bn: "ক্যাটাগরি:", en: "Category:" },
+      priceData: { bn: "মূল্য: ৳", en: "Price: ৳" },
+      perData: { bn: "প্রতি ডাটা", en: "Per Data" },
+      acceptRem: { bn: "বাকি সব একসেপ্ট করুন", en: "Accept Remaining" },
+      compSub: { bn: "সাবমিশন সম্পন্ন করুন", en: "Complete Submission" },
+      action: { bn: "অ্যাকশন", en: "Action" },
+      name: { bn: "নাম", en: "Name" },
+      curBal: { bn: "বর্তমান ব্যালেন্স", en: "Current Balance" },
+      totEarn: { bn: "মোট আয়", en: "Total Earned" },
+      reqBy: { bn: "রিকোয়েস্ট করেছে", en: "requested" },
+      priceSetting: { bn: "মূল্য নির্ধারণ (প্রতি ডাটা)", en: "Price Settings (Per Data)" }
+    };
+
+    const t = (key, lang) => translations[key] ? translations[key][lang] : key;
+
+    // ==========================================
+    // Main Application Component
+    // ==========================================
+    function App() {
+      const [user, setUser] = useState(null); 
+      const [activeUsername, setActiveUsername] = useState(null); 
+      const [userProfile, setUserProfile] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [prices, setPrices] = useState({ '615x': 2, '1000x': 5 });
+      const [forceUserView, setForceUserView] = useState(false);
+      const [lang, setLang] = useState('bn'); 
+
+      useEffect(() => {
+        let isMounted = true;
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+          if (currentUser) {
+            if (isMounted) setUser(currentUser);
+          } else {
+            try {
+              if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+              } else {
+                await signInAnonymously(auth);
+              }
+            } catch (error) {
+              console.error("Auth crash", error);
+              if (isMounted) setLoading(false);
+            }
+          }
+        });
+        return () => {
+          isMounted = false;
+          unsubscribe();
+        };
+      }, []);
+
+      useEffect(() => {
+        if (!user) return;
+        let isMounted = true;
+        const checkSession = async () => {
+          try {
+            const sessionDoc = await getDoc(getPublicDoc('user_sessions', user.uid));
+            if (sessionDoc.exists() && isMounted) {
+              setActiveUsername(sessionDoc.data().username);
+            } else if (isMounted) {
+              setLoading(false); 
+            }
+          } catch (err) {
+            console.error("Session crash", err);
+            if (isMounted) setLoading(false);
+          }
+        };
+        checkSession();
+        return () => { isMounted = false; };
+      }, [user]);
+
+      useEffect(() => {
+        if (!activeUsername) return;
+        const unsubscribeSettings = onSnapshot(getPublicCollection('settings'), (snapshot) => {
+          let currentPrices = { '615x': 2, '1000x': 5 };
+          snapshot.forEach((doc) => {
+            if (doc.id === 'pricing') currentPrices = { ...currentPrices, ...doc.data() };
+          });
+          setPrices(currentPrices);
+        });
+
+        const unsubscribeProfile = onSnapshot(getPublicDoc('users', activeUsername), (docSnap) => {
+          if (docSnap.exists()) setUserProfile({ id: docSnap.id, ...docSnap.data() });
+          else setActiveUsername(null); 
+          setLoading(false);
+        });
+
+        return () => { unsubscribeSettings(); unsubscribeProfile(); };
+      }, [activeUsername]);
+
+      const handleLogout = async () => {
+        setLoading(true);
+        if (user) await deleteDoc(getPublicDoc('user_sessions', user.uid)).catch(e => console.error(e));
+        setActiveUsername(null);
+        setUserProfile(null);
+        setLoading(false);
+      };
+
+      const toggleLang = () => setLang(lang === 'bn' ? 'en' : 'bn');
+
+      if (loading) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-m3-surface">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-m3-surfaceVariant border-t-m3-primary"></div>
+              <p className="text-m3-primary font-bold text-sm tracking-widest uppercase">{t('loading', lang)}</p>
+            </div>
+          </div>
+        );
+      }
+
+      if (!activeUsername || !userProfile) {
+        return <LoginScreen user={user} lang={lang} toggleLang={toggleLang} onComplete={(uid) => {
+          setActiveUsername(uid);
+          setLoading(true);
+        }} />;
+      }
+
+      const isActuallyAdmin = userProfile.role === 'admin';
+      const currentRoleView = (isActuallyAdmin && !forceUserView) ? 'admin' : 'user';
+
+      return (
+        <div className="min-h-screen bg-m3-surface font-sans selection:bg-m3-primaryContainer selection:text-m3-onPrimaryContainer">
+          <Navbar 
+            userProfile={userProfile} 
+            isActuallyAdmin={isActuallyAdmin}
+            forceUserView={forceUserView}
+            setForceUserView={setForceUserView}
+            onLogout={handleLogout}
+            lang={lang}
+            toggleLang={toggleLang}
+          />
+          <main className="max-w-5xl mx-auto p-4 md:p-6 pb-24">
+            {currentRoleView === 'admin' ? (
+              <AdminDashboard prices={prices} lang={lang} />
+            ) : (
+              <UserDashboard userProfile={userProfile} prices={prices} lang={lang} />
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // Login Screen (Material 3 Style)
+    // ==========================================
+    function LoginScreen({ user, onComplete, lang, toggleLang }) {
+      const [username, setUsername] = useState('');
+      const [password, setPassword] = useState('');
+      const [isSubmitting, setIsSubmitting] = useState(false);
+      const [error, setError] = useState('');
+      const [isLoginMode, setIsLoginMode] = useState(true);
+
+      const handleAuth = async (e) => {
+        e.preventDefault();
+        const uid = username.trim().toLowerCase();
+        if (!uid || !password.trim()) return;
+        
+        setIsSubmitting(true);
+        setError('');
+        
+        try {
+          const userRef = getPublicDoc('users', uid);
+          const docSnap = await getDoc(userRef);
+
+          if (isLoginMode) {
+            if (docSnap.exists()) {
+              if (docSnap.data().password !== password.trim()) {
+                setError(t('wrongPass', lang));
+                setIsSubmitting(false);
+                return;
+              }
+            } else {
+              setError(t('userNotFound', lang));
+              setIsSubmitting(false);
+              return;
+            }
+          } else {
+            if (docSnap.exists()) {
+              setError(t('userExists', lang));
+              setIsSubmitting(false);
+              return;
+            } else {
+              const role = uid === 'admin' ? 'admin' : 'user';
+              await setDoc(userRef, {
+                name: username.trim(),
+                username: uid,
+                password: password.trim(),
+                role: role,
+                balance: 0,
+                totalEarned: 0,
+                withdrawMethod: '',
+                withdrawAccount: '',
+                createdAt: new Date().toISOString()
+              });
+            }
+          }
+
+          await setDoc(getPublicDoc('user_sessions', user.uid), { username: uid });
+          onComplete(uid); 
+        } catch (err) {
+          console.error("Login crash", err);
+          setError(t('loginErr', lang));
+          setIsSubmitting(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-m3-surface p-4 relative overflow-hidden">
+          {/* Background Decorative Shapes */}
+          <div className="absolute top-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-m3-primaryContainer rounded-full blur-3xl opacity-50"></div>
+          <div className="absolute bottom-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-m3-secondaryContainer rounded-full blur-3xl opacity-50"></div>
+
+          <div className="absolute top-4 right-4 z-50">
+            <button onClick={toggleLang} className="flex items-center gap-2 p-2 px-5 bg-m3-surfaceVariant text-m3-onSurfaceVariant rounded-full hover:bg-m3-secondaryContainer transition-all font-bold text-sm shadow-sm">
+              <Globe size={18} /> {lang === 'bn' ? 'EN' : 'BN'}
+            </button>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] shadow-xl max-w-md w-full relative z-10 border border-white">
+            <div className="flex justify-center mb-6">
+              <div className="p-4 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-3xl shadow-sm">
+                <FileText size={36} strokeWidth={2.5} />
+              </div>
+            </div>
+            <h2 className="text-3xl font-bold text-center text-m3-onSurface mb-3 tracking-tight">{isLoginMode ? t('loginModeTitle', lang) : t('registerModeTitle', lang)}</h2>
+            <p className="text-m3-onSurfaceVariant mb-8 text-center text-sm font-medium">
+              {t('adminHint', lang)}
+            </p>
+
+            {error && <div className="mb-6 p-4 bg-m3-errorContainer text-m3-onErrorContainer rounded-2xl text-sm font-bold flex items-center gap-3"><XCircle size={18}/> {error}</div>}
+
+            <form onSubmit={handleAuth} className="space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">{t('username', lang)}</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full p-4 bg-m3-surfaceVariant/50 text-m3-onSurface rounded-2xl focus:bg-m3-surface focus:ring-2 focus:ring-m3-primary outline-none font-medium placeholder-m3-onSurfaceVariant/50"
+                  placeholder="e.g. rahim99"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">{t('password', lang)}</label>
+                <input
+                  type="password"
+                  required
+                  className="w-full p-4 bg-m3-surfaceVariant/50 text-m3-onSurface rounded-2xl focus:bg-m3-surface focus:ring-2 focus:ring-m3-primary outline-none font-medium placeholder-m3-onSurfaceVariant/50"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-m3-primary text-m3-onPrimary p-4 rounded-full font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 mt-4 shadow-md flex justify-center items-center gap-2"
+              >
+                {isSubmitting ? t('processing', lang) : (isLoginMode ? t('loginOnlyBtn', lang) : t('registerBtn', lang))}
+              </button>
+            </form>
+
+            <div className="mt-8 text-center">
+              <button 
+                type="button" 
+                onClick={() => {setIsLoginMode(!isLoginMode); setError('');}}
+                className="text-sm font-bold text-m3-primary hover:text-m3-onPrimaryContainer bg-m3-primaryContainer/30 px-6 py-2 rounded-full transition-colors"
+              >
+                {isLoginMode ? t('switchToRegister', lang) : t('switchToLogin', lang)}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // Navbar (Pill style M3)
+    // ==========================================
+    function Navbar({ userProfile, isActuallyAdmin, forceUserView, setForceUserView, onLogout, lang, toggleLang }) {
+      return (
+        <nav className="p-4 md:p-6 sticky top-0 z-40">
+          <div className="max-w-5xl mx-auto bg-white/90 backdrop-blur-xl rounded-full px-4 py-3 shadow-sm border border-white/50 flex justify-between items-center">
+            
+            <div className="flex items-center gap-3 pl-2">
+              <div className="p-2 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-full">
+                <FileText size={20} strokeWidth={2.5} />
+              </div>
+              <span className="text-xl font-bold text-m3-onSurface tracking-tight hidden sm:block">{t('portalName', lang)}</span>
+            </div>
+
+            <div className="flex items-center gap-2 md:gap-4 pr-1">
+              <button onClick={toggleLang} className="p-2 rounded-full hover:bg-m3-surfaceVariant text-m3-onSurfaceVariant transition-colors" title="Change Language">
+                <Globe size={20} />
+              </button>
+
+              {isActuallyAdmin && (
+                <button
+                  onClick={() => setForceUserView(!forceUserView)}
+                  className="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-full bg-m3-secondaryContainer text-m3-onSecondaryContainer hover:opacity-90 transition-all"
+                >
+                  <Users size={16} />
+                  <span className="hidden md:inline">{forceUserView ? t('adminView', lang) : t('userView', lang)}</span>
+                </button>
+              )}
+
+              <div className="hidden md:flex flex-col items-end px-3">
+                <span className="text-sm font-bold text-m3-onSurface">{userProfile.name}</span>
+                <span className="text-[10px] text-m3-onSurfaceVariant uppercase font-bold tracking-widest">{isActuallyAdmin && !forceUserView ? 'Admin' : 'User'}</span>
+              </div>
+              
+              {(userProfile.role === 'user' || forceUserView) && (
+                <div className="bg-m3-successContainer text-m3-onSuccessContainer px-5 py-2 rounded-full font-bold text-sm">
+                  ৳ {userProfile.balance}
+                </div>
+              )}
+
+              <button 
+                onClick={onLogout} 
+                title="Log Out"
+                className="p-3 text-m3-error hover:bg-m3-errorContainer rounded-full transition-all"
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
+          </div>
+        </nav>
+      );
+    }
+
+    // ==========================================
+    // USER DASHBOARD
+    // ==========================================
+    function UserDashboard({ userProfile, prices, lang }) {
+      const [activeTab, setActiveTab] = useState('submit');
+
+      return (
+        <div className="animate-in fade-in duration-500">
+          <div className="flex bg-m3-surfaceVariant/50 p-1.5 rounded-full mb-8 overflow-x-auto no-scrollbar w-fit mx-auto shadow-sm border border-white">
+            <TabButton active={activeTab === 'submit'} onClick={() => setActiveTab('submit')} icon={<FileText size={18}/>} label={t('dataSubmit', lang)} />
+            <TabButton active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={<List size={18}/>} label={t('subHistory', lang)} />
+            <TabButton active={activeTab === 'withdraw'} onClick={() => setActiveTab('withdraw')} icon={<DollarSign size={18}/>} label={t('withdraw', lang)} />
+          </div>
+
+          <div className="transition-all">
+            {activeTab === 'submit' && <SubmitData userProfile={userProfile} prices={prices} onSwitchTab={setActiveTab} lang={lang}/>}
+            {activeTab === 'history' && <UserHistory userProfile={userProfile} lang={lang}/>}
+            {activeTab === 'withdraw' && <UserWithdraw userProfile={userProfile} lang={lang}/>}
+          </div>
+        </div>
+      );
+    }
+
+    // -----------------------------------------------------------------
+    // SPREADSHEET SUBMIT
+    // -----------------------------------------------------------------
+    function SubmitData({ userProfile, prices, onSwitchTab, lang }) {
+      const numRows = 100;
+      const colLabels = ['A', 'B', 'C', 'D'];
+      const numCols = colLabels.length;
+      const emptyGrid = () => Array.from({ length: numRows }, () => Array(numCols).fill(''));
+
+      const [type, setType] = useState('615x');
+      const [gridData, setGridData] = useState(emptyGrid());
+      const [isSubmitting, setIsSubmitting] = useState(false);
+      const [message, setMessage] = useState('');
+      const [showPasteModal, setShowPasteModal] = useState(false);
+      const [pasteText, setPasteText] = useState('');
+
+      const handleCellChange = (r, c, val) => {
+        const newData = [...gridData];
+        newData[r][c] = val;
+        setGridData(newData);
+      };
+
+      const handleGridPaste = (e, startR, startC) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text');
+        applyPastedData(text, startR, startC);
+      };
+
+      const applyPastedData = (text, startR = 0, startC = 0) => {
+        const rows = text.split(/\r?\n/).map(r => r.split('\t'));
+        const newData = [...gridData];
+        
+        for (let i = 0; i < rows.length; i++) {
+          if (startR + i >= numRows) break;
+          for (let j = 0; j < rows[i].length; j++) {
+            if (startC + j >= numCols) break;
+            newData[startR + i][startC + j] = rows[i][j] || '';
+          }
+        }
+        setGridData(newData);
+        setShowPasteModal(false);
+        setPasteText('');
+      };
+
+      const handleReset = () => {
+        setGridData(emptyGrid());
+        setMessage(t('resetSuccess', lang));
+        setTimeout(() => setMessage(''), 3000);
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        let allItems = [];
+        gridData.forEach(row => {
+          const rowText = row.filter(cell => cell.trim() !== '').join(' - ');
+          if (rowText) {
+            allItems.push(rowText);
+          }
+        });
+
+        if (allItems.length === 0) {
+          setMessage(t('noDataErr', lang));
+          setTimeout(() => setMessage(''), 3000);
+          return;
+        }
+
+        setIsSubmitting(true);
+        setMessage('');
+
+        const uniqueItems = [...new Set(allItems)];
+        const duplicatesCount = allItems.length - uniqueItems.length;
+
+        try {
+          const itemsToSubmit = uniqueItems.map((text, index) => ({
+            id: `item_${Date.now()}_${index}`,
+            text: text,
+            status: 'pending' 
+          }));
+
+          await addDoc(getPublicCollection('submissions'), {
+            userId: userProfile.id,
+            userName: userProfile.name,
+            type: type,
+            items: itemsToSubmit,
+            totalItems: itemsToSubmit.length,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+          });
+
+          setGridData(emptyGrid()); 
+          
+          let successMsg = lang === 'bn' 
+            ? `সফলভাবে ${uniqueItems.length} টি ডাটা সাবমিট হয়েছে!` 
+            : `Successfully submitted ${uniqueItems.length} data!`;
+          
+          if (duplicatesCount > 0) {
+            successMsg += lang === 'bn' 
+              ? ` (${duplicatesCount} টি ডুপ্লিকেট রিমুভ করা হয়েছে)`
+              : ` (${duplicatesCount} duplicates removed)`;
+          }
+          
+          setMessage(successMsg);
+          setTimeout(() => onSwitchTab('history'), 2500);
+        } catch (err) {
+          console.error("Submit crash", err);
+          setMessage(lang === 'bn' ? 'সমস্যা হয়েছে। আবার চেষ্টা করুন।' : 'Error occurred. Try again.');
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+
+      return (
+        <div className="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant">
+          <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
+            <h2 className="text-2xl font-bold text-m3-onSurface tracking-tight">{t('newSubmit', lang)}</h2>
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={() => setShowPasteModal(true)}
+                className="px-5 py-2.5 bg-m3-primaryContainer text-m3-onPrimaryContainer font-bold rounded-full hover:opacity-90 transition-all text-sm flex items-center gap-2"
+              >
+                📋 {t('smartPaste', lang)}
+              </button>
+              <button 
+                type="button" 
+                onClick={handleReset}
+                className="px-5 py-2.5 bg-m3-errorContainer text-m3-onErrorContainer font-bold rounded-full hover:opacity-90 transition-all text-sm flex items-center gap-2"
+              >
+                🔄 {t('reset', lang)}
+              </button>
+            </div>
+          </div>
+
+          {message && (
+            <div className={`mb-8 p-4 rounded-2xl text-sm font-bold flex items-center gap-3 ${message.includes('সমস্যা') || message.includes('Error') || message.includes('No data') || message.includes('কোনো ডাটা') ? 'bg-m3-errorContainer text-m3-onErrorContainer' : 'bg-m3-successContainer text-m3-onSuccessContainer'}`}>
+              <CheckCircle size={20} /> {message}
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div>
+              <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-3 ml-2">{t('catSelect', lang)}</label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className={`cursor-pointer p-6 border-2 rounded-[1.5rem] text-center transition-all ${type === '615x' ? 'border-m3-primary bg-m3-primaryContainer/30 text-m3-primary' : 'border-m3-surfaceVariant bg-m3-surface hover:bg-m3-surfaceVariant/50'}`}>
+                  <input type="radio" name="type" className="hidden" checked={type === '615x'} onChange={() => setType('615x')} />
+                  <div className="font-bold text-lg">PC Clone 615x</div>
+                  <div className="text-sm font-medium mt-1 opacity-80">{t('each', lang)} ৳{prices['615x']}</div>
+                </label>
+                <label className={`cursor-pointer p-6 border-2 rounded-[1.5rem] text-center transition-all ${type === '1000x' ? 'border-m3-primary bg-m3-primaryContainer/30 text-m3-primary' : 'border-m3-surfaceVariant bg-m3-surface hover:bg-m3-surfaceVariant/50'}`}>
+                  <input type="radio" name="type" className="hidden" checked={type === '1000x'} onChange={() => setType('1000x')} />
+                  <div className="font-bold text-lg">PC Clone 1000x</div>
+                  <div className="text-sm font-medium mt-1 opacity-80">{t('each', lang)} ৳{prices['1000x']}</div>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-3 ml-2">
+                {t('enterDataInfo', lang)}
+              </label>
+              
+              <div className="overflow-auto max-h-[400px] border border-m3-surfaceVariant rounded-[1.5rem] bg-white">
+                <table className="w-full border-collapse table-fixed">
+                  <thead className="sticky top-0 z-10 bg-m3-surfaceVariant">
+                    <tr>
+                       <th className="w-12 border-b border-r border-m3-outline/20"></th>
+                       {colLabels.map(label => (
+                         <th key={label} className="border-b border-r border-m3-outline/20 px-3 py-2 font-bold text-m3-onSurfaceVariant text-sm">{label}</th>
+                       ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gridData.map((row, r) => (
+                      <tr key={r} className="hover:bg-m3-primaryContainer/20 focus-within:bg-m3-primaryContainer/30 transition-colors group">
+                        <td className="sticky left-0 border-b border-r border-m3-outline/20 bg-m3-surface group-hover:bg-m3-primaryContainer/20 text-center text-xs font-bold text-m3-onSurfaceVariant/70 w-12 select-none z-0">
+                          {r + 1}
+                        </td>
+                        {row.map((val, c) => (
+                          <td key={c} className="border-b border-r border-m3-outline/20 p-0 h-10">
+                            <input
+                              type="text"
+                              className="w-full h-full px-3 outline-none focus:ring-2 focus:ring-m3-primary focus:z-20 relative rounded-none border-none text-sm bg-transparent font-medium text-m3-onSurface"
+                              value={val}
+                              onChange={(e) => handleCellChange(r, c, e.target.value)}
+                              onPaste={(e) => handleGridPaste(e, r, c)}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs font-bold text-m3-error mt-3 ml-2">{t('dupWarning', lang)}</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-m3-primary text-m3-onPrimary p-5 rounded-full font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-md flex justify-center items-center gap-2"
+            >
+              {isSubmitting ? t('processing', lang) : <>{t('submitBtn', lang)} <ArrowRight size={20} /></>}
+            </button>
+          </form>
+
+          {/* SMART PASTE MODAL */}
+          {showPasteModal && (
+            <div className="fixed inset-0 bg-m3-onSurface/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-[2rem] shadow-xl max-w-lg w-full p-8 md:p-10">
+                <h3 className="font-bold text-2xl mb-2 text-m3-onSurface">{t('smartPaste', lang)}</h3>
+                <p className="text-sm font-medium text-m3-onSurfaceVariant mb-6">{t('pasteInstruction', lang)}</p>
+                <textarea
+                  className="w-full h-48 bg-m3-surface border border-m3-surfaceVariant rounded-2xl p-4 mb-8 focus:ring-2 focus:ring-m3-primary outline-none resize-none font-mono text-sm"
+                  placeholder="Ctrl+V..."
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                ></textarea>
+                <div className="flex justify-end gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => { setShowPasteModal(false); setPasteText(''); }} 
+                    className="px-6 py-3 text-m3-onSurfaceVariant font-bold hover:bg-m3-surfaceVariant rounded-full transition-all"
+                  >
+                    {t('cancel', lang)}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => applyPastedData(pasteText)} 
+                    className="px-6 py-3 bg-m3-primary text-m3-onPrimary font-bold rounded-full hover:opacity-90 shadow-md transition-all"
+                  >
+                    {t('apply', lang)}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // -----------------------------------------------------------------
+    // USER HISTORY & DETAILS
+    // -----------------------------------------------------------------
+    function UserHistory({ userProfile, lang }) {
+      const [submissions, setSubmissions] = useState([]);
+      const [viewingSub, setViewingSub] = useState(null);
+
+      useEffect(() => {
+        const unsubscribe = onSnapshot(getPublicCollection('submissions'), (snapshot) => {
+            const data = [];
+            snapshot.forEach(doc => {
+              const sub = { id: doc.id, ...doc.data() };
+              if (sub.userId === userProfile.id) {
+                data.push(sub);
+              }
+            });
+            data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setSubmissions(data);
+          }, (err) => console.error("History crash", err));
+        return () => unsubscribe();
+      }, [userProfile.id]);
+
+      return (
+        <div className="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant">
+          <h2 className="text-2xl font-bold mb-8 text-m3-onSurface tracking-tight">{t('subList', lang)}</h2>
+          
+          {submissions.length === 0 ? (
+            <div className="text-center py-20 bg-m3-surface rounded-3xl border border-dashed border-m3-outline/30">
+              <FileText className="mx-auto text-m3-onSurfaceVariant/50 mb-4" size={48} strokeWidth={1.5} />
+              <p className="text-m3-onSurfaceVariant font-bold">{t('noSub', lang)}</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {submissions.map(sub => (
+                <div key={sub.id} className="bg-m3-surface border border-m3-surfaceVariant p-5 md:p-6 rounded-[1.5rem] flex flex-col md:flex-row justify-between items-start md:items-center gap-5 hover:shadow-md transition-shadow">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="font-bold text-m3-onSurface text-lg">{sub.type === '615x' ? 'PC Clone 615x' : 'PC Clone 1000x'}</span>
+                      <StatusBadge status={sub.status} lang={lang} />
+                    </div>
+                    <div className="text-sm font-medium text-m3-onSurfaceVariant flex items-center gap-3">
+                      <span>{t('totalData', lang)} {sub.totalItems}</span>
+                      <span className="w-1.5 h-1.5 bg-m3-outline/30 rounded-full"></span>
+                      <span>{new Date(sub.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    {sub.status === 'reviewed' && (
+                      <div className="bg-white p-2.5 rounded-xl border border-m3-surfaceVariant text-sm flex gap-4 shadow-sm">
+                        <div className="text-m3-success font-bold px-2">✓ {sub.acceptedCount}</div>
+                        <div className="text-m3-error font-bold px-2 border-l border-m3-surfaceVariant">✗ {sub.rejectedCount}</div>
+                        <div className="text-m3-primary font-black px-2 border-l border-m3-surfaceVariant">৳{sub.payout}</div>
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => setViewingSub(sub)}
+                      className="flex-1 md:flex-none px-5 py-3 bg-m3-secondaryContainer text-m3-onSecondaryContainer hover:opacity-90 rounded-full flex justify-center items-center gap-2 font-bold text-sm transition-all"
+                    >
+                      <Eye size={18}/> {t('details', lang)}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* VIEW DETAILS MODAL */}
+          {viewingSub && (
+            <div className="fixed inset-0 bg-m3-onSurface/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-[2rem] shadow-xl max-w-2xl w-full p-6 md:p-10">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-bold text-2xl text-m3-onSurface">{t('subDetails', lang)}</h3>
+                  <button onClick={() => setViewingSub(null)} className="text-m3-onSurfaceVariant hover:bg-m3-surfaceVariant p-2 rounded-full transition-colors"><XCircle size={28}/></button>
+                </div>
+                
+                <div className="max-h-96 overflow-y-auto border border-m3-surfaceVariant rounded-[1.5rem]">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-m3-onSurfaceVariant bg-m3-surface uppercase sticky top-0 font-bold tracking-wider">
+                      <tr>
+                        <th className="px-5 py-4 border-b border-m3-surfaceVariant">{t('uid', lang)}</th>
+                        <th className="px-5 py-4 border-b border-m3-surfaceVariant">{t('password', lang)}</th>
+                        <th className="px-5 py-4 border-b border-m3-surfaceVariant w-32 text-center">{t('status', lang)}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewingSub.items.map((it) => {
+                        const parts = it.text.split(' - ');
+                        const uid = parts[0] || '-';
+                        const pass = parts[1] || '-';
+                        return (
+                          <tr key={it.id} className="border-b border-m3-surfaceVariant last:border-0 hover:bg-m3-surface transition-colors">
+                            <td className="px-5 py-3 font-mono text-xs font-bold text-m3-onSurface">{uid}</td>
+                            <td className="px-5 py-3 font-mono text-xs font-bold text-m3-onSurface">{pass}</td>
+                            <td className="px-5 py-3 text-center">
+                              {it.status === 'pending' && <span className="text-[#935c00] font-bold text-xs bg-[#ffdea3] px-3 py-1.5 rounded-lg">Pending</span>}
+                              {it.status === 'accepted' && <span className="text-m3-success font-bold flex items-center justify-center gap-1.5 text-xs bg-m3-successContainer px-3 py-1.5 rounded-lg"><CheckCircle size={14}/> Acc</span>}
+                              {it.status === 'rejected' && <span className="text-m3-error font-bold flex items-center justify-center gap-1.5 text-xs bg-m3-errorContainer px-3 py-1.5 rounded-lg"><XCircle size={14}/> Rej</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // -----------------------------------------------------------------
+    // USER WITHDRAW (Added Method & Account Save)
+    // -----------------------------------------------------------------
+    function UserWithdraw({ userProfile, lang }) {
+      const [amount, setAmount] = useState('');
+      const [withdrawals, setWithdrawals] = useState([]);
+      const [message, setMessage] = useState('');
+      
+      const [method, setMethod] = useState(userProfile.withdrawMethod || 'bKash');
+      const [accountNo, setAccountNo] = useState(userProfile.withdrawAccount || '');
+      const [isSavingMethod, setIsSavingMethod] = useState(false);
+
+      useEffect(() => {
+        const unsubscribe = onSnapshot(getPublicCollection('withdrawals'), (snapshot) => {
+            const data = [];
+            snapshot.forEach(doc => {
+              const w = { id: doc.id, ...doc.data() };
+              if (w.userId === userProfile.id) data.push(w);
+            });
+            data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setWithdrawals(data);
+          }, (err) => console.error("Withdraw history crash", err));
+        return () => unsubscribe();
+      }, [userProfile.id]);
+
+      const handleSaveMethod = async (e) => {
+        e.preventDefault();
+        setIsSavingMethod(true);
+        try {
+          await updateDoc(getPublicDoc('users', userProfile.id), {
+            withdrawMethod: method,
+            withdrawAccount: accountNo
+          });
+          setMessage(lang === 'bn' ? 'পেমেন্ট মেথড সেভ হয়েছে!' : 'Payment method saved!');
+          setTimeout(() => setMessage(''), 3000);
+        } catch(err) {
+          console.error(err);
+          setMessage(lang === 'bn' ? 'সমস্যা হয়েছে।' : 'Error occurred.');
+        } finally {
+          setIsSavingMethod(false);
+        }
+      };
+
+      const handleWithdraw = async (e) => {
+        e.preventDefault();
+        const wAmount = parseInt(amount);
+        
+        if (!userProfile.withdrawAccount) {
+          setMessage(lang === 'bn' ? 'আগে পেমেন্ট মেথড এবং নাম্বার সেভ করুন!' : 'Save payment method first!');
+          return;
+        }
+        if (isNaN(wAmount) || wAmount < 100) {
+          setMessage(lang === 'bn' ? 'সর্বনিম্ন ১০০ টাকা উত্তোলন করা যাবে।' : 'Minimum 100 Taka withdrawable.');
+          return;
+        }
+        if (wAmount > userProfile.balance) {
+          setMessage(lang === 'bn' ? 'পর্যাপ্ত ব্যালেন্স নেই!' : 'Insufficient balance!');
+          return;
+        }
+
+        try {
+          const userRef = getPublicDoc('users', userProfile.id);
+          await updateDoc(userRef, {
+            balance: userProfile.balance - wAmount
+          });
+
+          await addDoc(getPublicCollection('withdrawals'), {
+            userId: userProfile.id,
+            userName: userProfile.name,
+            amount: wAmount,
+            method: userProfile.withdrawMethod,
+            accountNo: userProfile.withdrawAccount,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+          });
+
+          setMessage(lang === 'bn' ? 'রিকোয়েস্ট পাঠানো হয়েছে। ব্যালেন্স কেটে রাখা হয়েছে।' : 'Request sent. Balance deducted.');
+          setAmount('');
+          setTimeout(() => setMessage(''), 4000);
+        } catch (err) {
+          console.error("Withdraw crash", err);
+          setMessage(lang === 'bn' ? 'সমস্যা হয়েছে।' : 'Error occurred.');
+        }
+      };
+
+      const handleWithdrawAll = () => {
+        if (userProfile.balance >= 100) {
+          setAmount(userProfile.balance.toString());
+        }
+      };
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* PAYMENT METHOD SECTION */}
+            <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-m3-surfaceVariant">
+              <h2 className="text-xl font-bold mb-6 text-m3-onSurface flex items-center gap-3"><CreditCard size={24} className="text-m3-primary"/> {t('payMethod', lang)}</h2>
+              <form onSubmit={handleSaveMethod} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">{t('method', lang)}</label>
+                  <select 
+                    className="w-full p-4 bg-m3-surface border-none rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface"
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value)}
+                  >
+                    <option value="bKash">bKash (বিকাশ)</option>
+                    <option value="Nagad">Nagad (নগদ)</option>
+                    <option value="Rocket">Rocket (রকেট)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">{t('accNo', lang)}</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full p-4 bg-m3-surface border-none rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface"
+                    placeholder="017XXXXXXXX"
+                    value={accountNo}
+                    onChange={(e) => setAccountNo(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSavingMethod}
+                  className="w-full bg-m3-secondaryContainer text-m3-onSecondaryContainer p-4 rounded-full font-bold hover:opacity-90 transition-all disabled:opacity-50 mt-2"
+                >
+                  {isSavingMethod ? t('saving', lang) : t('save', lang)}
+                </button>
+              </form>
+            </div>
+
+            {/* WITHDRAWAL FORM */}
+            <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-m3-surfaceVariant">
+              <h2 className="text-xl font-bold mb-6 text-m3-onSurface">{t('withdrawMoney', lang)}</h2>
+              
+              <div className="bg-m3-successContainer rounded-[1.5rem] p-6 mb-8 text-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
+                <p className="text-xs font-bold text-m3-onSuccessContainer/80 mb-2 uppercase tracking-widest relative z-10">{t('withdrawBal', lang)}</p>
+                <p className="text-5xl font-black text-m3-onSuccessContainer relative z-10">৳{userProfile.balance}</p>
+              </div>
+
+              {message && <div className={`mb-6 p-4 rounded-2xl text-sm font-bold flex items-center gap-3 ${message.includes('সমস্যা') || message.includes('Error') || message.includes('আগে') || message.includes('first') ? 'bg-m3-errorContainer text-m3-onErrorContainer' : 'bg-m3-successContainer text-m3-onSuccessContainer'}`}>
+                <CheckCircle size={20} /> {message}
+              </div>}
+
+              <form onSubmit={handleWithdraw} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">{t('amount', lang)}</label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-5 text-m3-onSurface font-black text-lg">৳</span>
+                    <input
+                      type="number"
+                      min="100"
+                      className="w-full p-4 pl-10 pr-24 bg-m3-surface border-none rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface text-lg"
+                      placeholder={t('minAmnt', lang)}
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleWithdrawAll}
+                      className="absolute right-3 bg-m3-primaryContainer text-m3-onPrimaryContainer px-4 py-2 rounded-xl font-bold text-xs transition-colors hover:opacity-80"
+                    >
+                      {t('withdrawAll', lang)}
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={userProfile.balance < 100}
+                  className="w-full bg-m3-primary text-m3-onPrimary p-4 rounded-full font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-md"
+                >
+                  {t('sendReq', lang)}
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-m3-surfaceVariant">
+            <h2 className="text-xl font-bold mb-6 text-m3-onSurface">{t('withdrawHist', lang)}</h2>
+            {withdrawals.length === 0 ? (
+              <div className="text-center py-20 bg-m3-surface rounded-3xl border border-dashed border-m3-outline/30">
+                 <DollarSign className="mx-auto text-m3-onSurfaceVariant/50 mb-3" size={48} strokeWidth={1.5} />
+                 <p className="text-m3-onSurfaceVariant font-bold">{t('noRecord', lang)}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {withdrawals.map(w => (
+                  <div key={w.id} className="flex justify-between items-center bg-m3-surface p-5 rounded-[1.5rem] hover:bg-m3-surfaceVariant/50 transition-all">
+                    <div>
+                      <div className="font-bold text-m3-onSurface text-xl flex items-center gap-3 mb-1">
+                        ৳{w.amount}
+                        <span className="text-xs bg-white border border-m3-surfaceVariant text-m3-onSurface px-2.5 py-1 rounded-lg font-bold tracking-wider uppercase shadow-sm">{w.method}</span>
+                      </div>
+                      <div className="text-xs font-bold text-m3-onSurfaceVariant pl-0.5">{new Date(w.createdAt).toLocaleDateString()}</div>
+                    </div>
+                    <StatusBadge status={w.status} lang={lang} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+
+    // ==========================================
+    // ADMIN DASHBOARD
+    // ==========================================
+    function AdminDashboard({ prices, lang }) {
+      const [activeTab, setActiveTab] = useState('pending');
+
+      return (
+        <div className="animate-in fade-in duration-500">
+          <div className="flex bg-m3-surfaceVariant/50 p-1.5 rounded-full mb-8 overflow-x-auto no-scrollbar w-fit mx-auto shadow-sm border border-white">
+            <TabButton active={activeTab === 'pending'} onClick={() => setActiveTab('pending')} icon={<List size={18}/>} label={t('pendWork', lang)} />
+            <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} icon={<Users size={18}/>} label={t('userList', lang)} />
+            <TabButton active={activeTab === 'withdrawals'} onClick={() => setActiveTab('withdrawals')} icon={<DollarSign size={18}/>} label={t('withReq', lang)} />
+            <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<Settings size={18}/>} label={t('settings', lang)} />
+          </div>
+
+          <div className="transition-all">
+            {activeTab === 'pending' && <AdminPendingSubmissions prices={prices} lang={lang}/>}
+            {activeTab === 'users' && <AdminUsersList lang={lang}/>}
+            {activeTab === 'withdrawals' && <AdminWithdrawals lang={lang}/>}
+            {activeTab === 'settings' && <AdminSettings prices={prices} lang={lang}/>}
+          </div>
+        </div>
+      );
+    }
+
+    function AdminPendingSubmissions({ prices, lang }) {
+      const [submissions, setSubmissions] = useState([]);
+      const [reviewingTask, setReviewingTask] = useState(null);
+
+      useEffect(() => {
+        const unsubscribe = onSnapshot(getPublicCollection('submissions'), (snapshot) => {
+            const data = [];
+            snapshot.forEach(doc => {
+              data.push({ id: doc.id, ...doc.data() });
+            });
+            data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setSubmissions(data);
+          }, (err) => console.error("Admin subs crash", err));
+        return () => unsubscribe();
+      }, []);
+
+      const pendingCount = submissions.filter(s => s.status === 'pending').length;
+
+      if (reviewingTask) {
+        return <ReviewModal task={reviewingTask} prices={prices} onClose={() => setReviewingTask(null)} lang={lang} />;
+      }
+
+      return (
+        <div className="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-bold text-m3-onSurface">{t('adminSubList', lang)}</h2>
+            <span className="bg-[#ffdea3] text-[#935c00] text-xs font-black px-4 py-2 rounded-full shadow-sm">Pending: {pendingCount}</span>
+          </div>
+          
+          <div className="space-y-4">
+            {submissions.map(sub => (
+              <div key={sub.id} className="bg-m3-surface border border-m3-surfaceVariant p-5 md:p-6 rounded-[1.5rem] flex flex-col md:flex-row justify-between items-center gap-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => sub.status === 'pending' && setReviewingTask(sub)}>
+                <div className="w-full md:w-auto flex-grow">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <span className="font-bold text-m3-onSurface text-lg">{sub.userName}</span>
+                    <span className="text-m3-outline/30 hidden md:inline">•</span>
+                    <span className="text-xs font-bold text-m3-primary bg-m3-primaryContainer/30 px-3 py-1 rounded-lg border border-m3-primaryContainer">{sub.type === '615x' ? 'PC Clone 615x' : 'PC Clone 1000x'}</span>
+                    <StatusBadge status={sub.status} lang={lang} />
+                  </div>
+                  <div className="text-sm font-medium text-m3-onSurfaceVariant flex items-center gap-3 pl-1">
+                    <span>{t('totalData', lang)} {sub.totalItems}</span>
+                    <span className="w-1.5 h-1.5 bg-m3-outline/30 rounded-full"></span>
+                    <span>{new Date(sub.createdAt).toLocaleString()}</span>
+                  </div>
+                </div>
+                
+                {sub.status === 'pending' ? (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setReviewingTask(sub); }}
+                    className="w-full md:w-auto px-6 py-3 bg-m3-primary text-m3-onPrimary rounded-full font-bold hover:opacity-90 text-sm flex items-center justify-center gap-2 shadow-md transition-all"
+                  >
+                    <CheckSquare size={18} /> {t('reviewBtn', lang)}
+                  </button>
+                ) : (
+                  <div className="text-sm font-bold text-m3-success bg-m3-successContainer px-5 py-3 rounded-full flex items-center gap-2">
+                    <CheckCircle size={16} /> {t('paidComp', lang)} (৳{sub.payout})
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ----------------------------------------------------
+    // Core Review Logic Component (Admin)
+    // ----------------------------------------------------
+    function ReviewModal({ task, prices, onClose, lang }) {
+      const [items, setItems] = useState(task.items || []);
+      const [isProcessing, setIsProcessing] = useState(false);
+      const [errorMsg, setErrorMsg] = useState('');
+      const currentPrice = prices[task.type] || 0;
+
+      const handleItemAction = (itemId, newStatus) => {
+        setItems(items.map(it => it.id === itemId ? { ...it, status: newStatus } : it));
+      };
+
+      const handleAcceptRemaining = () => {
+        setItems(items.map(it => it.status === 'pending' ? { ...it, status: 'accepted' } : it));
+      };
+
+      const handleFinalize = async () => {
+        if (items.some(it => it.status === 'pending')) {
+          setErrorMsg(lang === 'bn' ? "সবগুলো ডাটা রিভিউ করুন অথবা 'বাকি সব একসেপ্ট' বাটনে ক্লিক করুন।" : "Please review all items or click 'Accept Remaining'.");
+          return;
+        }
+        setErrorMsg('');
+        setIsProcessing(true);
+        try {
+          const acceptedCount = items.filter(it => it.status === 'accepted').length;
+          const rejectedCount = items.filter(it => it.status === 'rejected').length;
+          const totalPayout = acceptedCount * currentPrice;
+
+          const userRef = getPublicDoc('users', task.userId);
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+            const currentBalance = userDoc.data().balance || 0;
+            const currentTotalEarned = userDoc.data().totalEarned || 0;
+            await updateDoc(userRef, {
+              balance: currentBalance + totalPayout,
+              totalEarned: currentTotalEarned + totalPayout
+            });
+          }
+
+          const subRef = getPublicDoc('submissions', task.id);
+          await updateDoc(subRef, {
+            status: 'reviewed',
+            items: items,
+            acceptedCount,
+            rejectedCount,
+            payout: totalPayout
+          });
+
+          onClose();
+        } catch (err) {
+          console.error("Finalize crash", err);
+          setIsProcessing(false);
+        }
+      };
+
+      const pendingCount = items.filter(it => it.status === 'pending').length;
+      const acceptedCount = items.filter(it => it.status === 'accepted').length;
+      const rejectedCount = items.filter(it => it.status === 'rejected').length;
+
+      return (
+        <div className="bg-white rounded-[2rem] p-6 md:p-10 shadow-xl border border-m3-surfaceVariant">
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <h2 className="text-3xl font-black text-m3-onSurface">{t('reviewTitle', lang)} <span className="text-m3-primary">{task.userName}</span></h2>
+              <div className="flex gap-3 mt-4 text-sm font-bold">
+                <span className="bg-m3-surfaceVariant/50 text-m3-onSurface px-4 py-2 rounded-full border border-m3-surfaceVariant">{t('cat', lang)} {task.type}</span>
+                <span className="bg-m3-primaryContainer/30 text-m3-primary px-4 py-2 rounded-full border border-m3-primaryContainer">{t('priceData', lang)}{currentPrice} /{t('perData', lang)}</span>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-m3-onSurfaceVariant bg-m3-surface hover:bg-m3-errorContainer hover:text-m3-onErrorContainer p-3 rounded-full transition-colors"><XCircle size={28}/></button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-m3-surface border border-m3-surfaceVariant p-5 rounded-[1.5rem] text-center">
+              <div className="text-xs text-m3-onSurfaceVariant font-bold uppercase tracking-widest mb-2">{t('totalData', lang)}</div>
+              <div className="text-4xl font-black text-m3-onSurface">{items.length}</div>
+            </div>
+            <div className="bg-m3-successContainer/30 border border-m3-successContainer p-5 rounded-[1.5rem] text-center">
+              <div className="text-xs text-m3-success font-bold uppercase tracking-widest mb-2">{t('accepted', lang)}</div>
+              <div className="text-4xl font-black text-m3-success">{acceptedCount}</div>
+            </div>
+            <div className="bg-m3-errorContainer/30 border border-m3-errorContainer p-5 rounded-[1.5rem] text-center">
+              <div className="text-xs text-m3-error font-bold uppercase tracking-widest mb-2">{t('rejected', lang)}</div>
+              <div className="text-4xl font-black text-m3-error">{rejectedCount}</div>
+            </div>
+            <div className="bg-m3-primaryContainer/30 border border-m3-primaryContainer p-5 rounded-[1.5rem] text-center">
+              <div className="text-xs text-m3-primary font-bold uppercase tracking-widest mb-2">{t('income', lang)}</div>
+              <div className="text-4xl font-black text-m3-primary">৳{acceptedCount * currentPrice}</div>
+            </div>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto border border-m3-surfaceVariant rounded-[1.5rem] mb-8">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-m3-onSurfaceVariant bg-m3-surface uppercase sticky top-0 font-bold tracking-wider">
+                <tr>
+                  <th className="px-6 py-5 border-b border-m3-surfaceVariant">{t('uid', lang)}</th>
+                  <th className="px-6 py-5 border-b border-m3-surfaceVariant">{t('password', lang)}</th>
+                  <th className="px-6 py-5 border-b border-m3-surfaceVariant w-48 text-center">{t('action', lang)}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it) => {
+                   const parts = it.text.split(' - ');
+                   const uid = parts[0] || '-';
+                   const pass = parts[1] || '-';
+                   
+                   return (
+                     <tr key={it.id} className="border-b border-m3-surfaceVariant last:border-0 hover:bg-m3-surface transition-colors">
+                       <td className="px-6 py-4 font-mono text-sm font-bold text-m3-onSurface">{uid}</td>
+                       <td className="px-6 py-4 font-mono text-sm font-bold text-m3-onSurface">{pass}</td>
+                       <td className="px-6 py-4">
+                         <div className="flex justify-center gap-3">
+                           {it.status === 'pending' && (
+                             <>
+                               <button onClick={() => handleItemAction(it.id, 'accepted')} className="p-2.5 text-m3-success bg-m3-successContainer hover:opacity-80 rounded-full transition-colors" title="Accept"><CheckCircle size={20}/></button>
+                               <button onClick={() => handleItemAction(it.id, 'rejected')} className="p-2.5 text-m3-error bg-m3-errorContainer hover:opacity-80 rounded-full transition-colors" title="Reject"><XCircle size={20}/></button>
+                             </>
+                           )}
+                           {it.status === 'accepted' && <span className="text-m3-success font-bold flex items-center gap-2 text-xs bg-m3-successContainer px-4 py-2 rounded-full"><CheckCircle size={16}/> Acc</span>}
+                           {it.status === 'rejected' && <span className="text-m3-error font-bold flex items-center gap-2 text-xs bg-m3-errorContainer px-4 py-2 rounded-full"><XCircle size={16}/> Rej</span>}
+                         </div>
+                       </td>
+                     </tr>
+                   )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {errorMsg && <div className="mb-6 text-center text-m3-error font-bold text-sm bg-m3-errorContainer p-3 rounded-full">{errorMsg}</div>}
+
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-m3-surface p-6 rounded-[2rem] border border-m3-surfaceVariant">
+            <button
+              onClick={handleAcceptRemaining}
+              disabled={pendingCount === 0}
+              className="w-full md:w-auto px-8 py-4 bg-white border border-m3-outline text-m3-onSurface font-bold rounded-full hover:bg-m3-surfaceVariant disabled:opacity-50 transition-all shadow-sm"
+            >
+              {t('acceptRem', lang)} ({pendingCount})
+            </button>
+            
+            <button
+              onClick={handleFinalize}
+              disabled={isProcessing}
+              className="w-full md:w-auto px-10 py-4 bg-m3-primary text-m3-onPrimary font-black rounded-full hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-3 shadow-md"
+            >
+              {isProcessing ? t('processing', lang) : t('compSub', lang)}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function AdminUsersList({ lang }) {
+      const [users, setUsers] = useState([]);
+
+      useEffect(() => {
+        const unsubscribe = onSnapshot(getPublicCollection('users'), (snapshot) => {
+            const data = [];
+            snapshot.forEach(doc => {
+              data.push({ id: doc.id, ...doc.data() });
+            });
+            setUsers(data.filter(u => u.role !== 'admin'));
+          }, (err) => console.error("Users list crash", err));
+        return () => unsubscribe();
+      }, []);
+
+      return (
+        <div className="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant">
+          <h2 className="text-2xl font-bold mb-8 text-m3-onSurface">{t('userList', lang)}</h2>
+          <div className="overflow-x-auto rounded-[1.5rem] border border-m3-surfaceVariant">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-m3-onSurfaceVariant bg-m3-surface uppercase font-bold tracking-wider border-b border-m3-surfaceVariant">
+                <tr>
+                  <th className="px-6 py-5">{t('name', lang)}</th>
+                  <th className="px-6 py-5 text-right">{t('curBal', lang)}</th>
+                  <th className="px-6 py-5 text-right">{t('totEarn', lang)}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id} className="border-b border-m3-surfaceVariant last:border-0 hover:bg-m3-surface transition-colors">
+                    <td className="px-6 py-5 font-bold text-m3-onSurface text-base">{u.name}</td>
+                    <td className="px-6 py-5 text-right text-m3-primary font-black text-xl">৳{u.balance}</td>
+                    <td className="px-6 py-5 text-right text-m3-onSurfaceVariant font-bold text-base">৳{u.totalEarned}</td>
+                  </tr>
+                ))}
+                {users.length === 0 && <tr><td colSpan="3" className="text-center py-12 text-m3-onSurfaceVariant font-bold">No users found.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // ----------------------------------------------------
+    // Admin Withdrawals Processing
+    // ----------------------------------------------------
+    function AdminWithdrawals({ lang }) {
+      const [withdrawals, setWithdrawals] = useState([]);
+
+      useEffect(() => {
+        const unsubscribe = onSnapshot(getPublicCollection('withdrawals'), (snapshot) => {
+            const data = [];
+            snapshot.forEach(doc => {
+              data.push({ id: doc.id, ...doc.data() });
+            });
+            data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setWithdrawals(data);
+          }, (err) => console.error("Admin withdraw crash", err));
+        return () => unsubscribe();
+      }, []);
+
+      const handleAction = async (id, newStatus, amount, userId) => {
+        try {
+          const wRef = getPublicDoc('withdrawals', id);
+          await updateDoc(wRef, { status: newStatus });
+
+          if (newStatus === 'rejected') {
+            const userRef = getPublicDoc('users', userId);
+            const userDoc = await getDoc(userRef);
+            if (userDoc.exists()) {
+              const currentBal = userDoc.data().balance || 0;
+              await updateDoc(userRef, { balance: currentBal + amount });
+            }
+          }
+        } catch (err) {
+          console.error("Action crash", err);
+        }
+      };
+
+      return (
+        <div className="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant">
+          <h2 className="text-2xl font-bold mb-8 text-m3-onSurface">{t('withReq', lang)}</h2>
+          <div className="space-y-4">
+            {withdrawals.map(w => (
+              <div key={w.id} className="bg-m3-surface border border-m3-surfaceVariant p-5 md:p-6 rounded-[1.5rem] flex flex-col md:flex-row justify-between items-start md:items-center gap-5 hover:shadow-md transition-shadow">
+                <div>
+                  <div className="font-bold text-m3-onSurface text-lg flex items-center gap-3">
+                    {w.userName} 
+                    <span className="text-sm font-medium text-m3-onSurfaceVariant">{t('reqBy', lang)}</span> 
+                    <span className="text-xl font-black text-m3-success bg-m3-successContainer/50 px-3 py-1 rounded-xl border border-m3-successContainer">৳{w.amount}</span>
+                  </div>
+                  <div className="text-sm font-bold text-m3-primary mt-3 bg-m3-primaryContainer/30 inline-block px-4 py-2 rounded-xl border border-m3-primaryContainer">{t('method', lang)}: {w.method} - {w.accountNo}</div>
+                  <div className="text-xs font-bold text-m3-onSurfaceVariant mt-3 pl-1">{new Date(w.createdAt).toLocaleString()}</div>
+                </div>
+                
+                <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0">
+                  {w.status === 'pending' ? (
+                    <>
+                      <button onClick={() => handleAction(w.id, 'paid', w.amount, w.userId)} className="flex-1 md:flex-none px-8 py-3 bg-m3-primary text-m3-onPrimary rounded-full font-bold hover:opacity-90 text-sm shadow-md transition-all">Paid</button>
+                      <button onClick={() => handleAction(w.id, 'rejected', w.amount, w.userId)} className="flex-1 md:flex-none px-8 py-3 bg-m3-errorContainer text-m3-error rounded-full font-bold hover:opacity-90 text-sm transition-all border border-m3-errorContainer">Reject</button>
+                    </>
+                  ) : (
+                    <StatusBadge status={w.status} lang={lang} />
+                  )}
+                </div>
+              </div>
+            ))}
+            {withdrawals.length === 0 && <p className="text-center text-m3-onSurfaceVariant font-bold py-12 bg-m3-surface rounded-3xl border border-dashed border-m3-outline/30">No requests</p>}
+          </div>
+        </div>
+      );
+    }
+
+    function AdminSettings({ prices, lang }) {
+      const [localPrices, setLocalPrices] = useState(prices);
+      const [saving, setSaving] = useState(false);
+
+      useEffect(() => setLocalPrices(prices), [prices]);
+
+      const handleSave = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+          await setDoc(getPublicDoc('settings', 'pricing'), localPrices);
+        } catch (err) {
+          console.error("Settings save crash", err);
+        } finally {
+          setSaving(false);
+        }
+      };
+
+      return (
+        <div className="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant max-w-lg mx-auto">
+          <h2 className="text-2xl font-bold mb-8 text-m3-onSurface text-center"><Settings size={32} className="mx-auto mb-3 text-m3-primary" /> {t('priceSetting', lang)}</h2>
+          <form onSubmit={handleSave} className="space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">PC Clone 615x প্রাইস (৳)</label>
+              <input
+                type="number"
+                className="w-full p-4 bg-m3-surface rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface text-lg text-center"
+                value={localPrices['615x']}
+                onChange={(e) => setLocalPrices({...localPrices, '615x': Number(e.target.value)})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">PC Clone 1000x প্রাইস (৳)</label>
+              <input
+                type="number"
+                className="w-full p-4 bg-m3-surface rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface text-lg text-center"
+                value={localPrices['1000x']}
+                onChange={(e) => setLocalPrices({...localPrices, '1000x': Number(e.target.value)})}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full bg-m3-primary text-m3-onPrimary p-4 rounded-full font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-md mt-6"
+            >
+              {saving ? t('saving', lang) : t('save', lang)}
+            </button>
+          </form>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // Micro Components
+    // ==========================================
+    function TabButton({ active, onClick, icon, label }) {
+      return (
+        <button
+          onClick={onClick}
+          className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${
+            active 
+              ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' 
+              : 'text-m3-onSurfaceVariant hover:bg-white/50'
+          }`}
+        >
+          {icon} {label}
+        </button>
+      );
+    }
+
+    function StatusBadge({ status, lang }) {
+      const styles = {
+        pending: 'bg-[#ffdea3] text-[#935c00] border border-[#e1c187]',
+        reviewed: 'bg-m3-primaryContainer text-m3-onPrimaryContainer border border-m3-primaryContainer',
+        approved: 'bg-m3-successContainer text-m3-onSuccessContainer border border-m3-successContainer',
+        paid: 'bg-m3-primary text-m3-onPrimary shadow-sm',
+        rejected: 'bg-m3-errorContainer text-m3-error border border-m3-errorContainer',
+        accepted: 'bg-m3-successContainer text-m3-success border border-m3-successContainer'
+      };
+      
+      const labels = {
+        pending: lang === 'bn' ? 'অপেক্ষমান' : 'Pending',
+        reviewed: lang === 'bn' ? 'রিভিউ সম্পন্ন' : 'Reviewed',
+        approved: lang === 'bn' ? 'অনুমোদিত' : 'Approved',
+        paid: lang === 'bn' ? 'পেইড' : 'Paid',
+        rejected: lang === 'bn' ? 'বাতিল' : 'Rejected',
+        accepted: lang === 'bn' ? 'গৃহীত' : 'Accepted'
+      };
+
+      return (
+        <span className={`text-xs font-black px-4 py-2 rounded-full uppercase tracking-widest ${styles[status] || 'bg-m3-surfaceVariant text-m3-onSurfaceVariant'}`}>
+          {labels[status] || status}
+        </span>
+      );
+    }
+
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
