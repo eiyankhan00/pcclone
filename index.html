@@ -15,31 +15,18 @@
         extend: {
           colors: {
             m3: {
-              primary: '#415f91',
-              onPrimary: '#ffffff',
-              primaryContainer: '#d6e3ff',
-              onPrimaryContainer: '#001b3e',
-              secondary: '#565f71',
-              onSecondary: '#ffffff',
-              secondaryContainer: '#dae2f9',
-              onSecondaryContainer: '#131c2b',
-              surface: '#f9f9ff',
-              onSurface: '#191c20',
-              surfaceVariant: '#e0e2ec',
-              onSurfaceVariant: '#44474e',
-              error: '#ba1a1a',
-              onError: '#ffffff',
-              errorContainer: '#ffdad6',
-              onErrorContainer: '#410002',
-              success: '#0b6b3d',
-              successContainer: '#9cf6b9',
-              onSuccessContainer: '#00210e'
+              primary: '#415f91', onPrimary: '#ffffff',
+              primaryContainer: '#d6e3ff', onPrimaryContainer: '#001b3e',
+              secondary: '#565f71', onSecondary: '#ffffff',
+              secondaryContainer: '#dae2f9', onSecondaryContainer: '#131c2b',
+              surface: '#f9f9ff', onSurface: '#191c20',
+              surfaceVariant: '#e0e2ec', onSurfaceVariant: '#44474e',
+              error: '#ba1a1a', onError: '#ffffff',
+              errorContainer: '#ffdad6', onErrorContainer: '#410002',
+              success: '#0b6b3d', successContainer: '#9cf6b9', onSuccessContainer: '#00210e'
             }
           },
-          borderRadius: {
-            '4xl': '2rem',
-            '5xl': '2.5rem',
-          }
+          borderRadius: { '4xl': '2rem', '5xl': '2.5rem' }
         }
       }
     }
@@ -50,34 +37,22 @@
       background-color: #f0f2f5;
       font-family: system-ui, -apple-system, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
     }
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { 
-      -webkit-appearance: none; 
-      margin: 0; 
-    }
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     * {
       transition-property: background-color, border-color, color, opacity, box-shadow;
       transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
       transition-duration: 200ms;
     }
-    .fade-in {
-      animation: fadeIn 0.4s ease-in-out forwards;
-    }
+    .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
+      from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .hidden { display: none !important; }
   </style>
 </head>
 <body class="text-m3-onSurface">
@@ -85,334 +60,237 @@
   <!-- Root Container -->
   <div id="app"></div>
 
-  <!-- Main Vanilla JS Logic -->
+  <!-- Pure Vanilla JavaScript -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-    import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, addDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+    import { 
+      getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, 
+      GoogleAuthProvider, onAuthStateChanged, signOut 
+    } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { 
+      getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, addDoc, deleteDoc 
+    } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
     // ==========================================
-    // 🔴 🔴 🔴 IMPORTANT: PUT YOUR FIREBASE CONFIG HERE 🔴 🔴 🔴
+    // 🔴 Firebase Configuration 🔴
     // ==========================================
-    const userFirebaseConfig = {
-      // apiKey: "AIzaSy...",
-      // authDomain: "your-project.firebaseapp.com",
-      // projectId: "your-project",
-      // storageBucket: "your-project.appspot.com",
-      // messagingSenderId: "123456789",
-      // appId: "1:123456789:web:abcdef"
+    const firebaseConfig = {
+      apiKey: "AIzaSyDwCpuxAgVtYpJIGTAZ14glZh3996gy-eU",
+      authDomain: "data-collection-portal-1bce9.firebaseapp.com",
+      projectId: "data-collection-portal-1bce9",
+      storageBucket: "data-collection-portal-1bce9.firebasestorage.app",
+      messagingSenderId: "397875958510",
+      appId: "1:397875958510:web:439c4185722c9c162859ff",
+      measurementId: "G-C6X22R15J2"
     };
 
-    // Safe Firebase Initialization
-    let firebaseConfig = {};
-    if (Object.keys(userFirebaseConfig).length > 0 && userFirebaseConfig.apiKey) {
-      firebaseConfig = userFirebaseConfig;
-    } else if (typeof __firebase_config !== 'undefined') {
-      try { firebaseConfig = JSON.parse(__firebase_config); } catch(e) { console.error("Config crash", e); }
-    }
-
-    const isFirebaseConfigured = !!firebaseConfig.apiKey;
-    let app, auth, db;
-    if (isFirebaseConfigured) {
-      app = initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      db = getFirestore(app);
-    }
-    
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'my-portal-app';
-    const getPublicCollection = (colName) => isFirebaseConfigured ? collection(db, 'artifacts', appId, 'public', 'data', colName) : null;
-    const getPublicDoc = (colName, docId) => isFirebaseConfigured ? doc(db, 'artifacts', appId, 'public', 'data', colName, docId) : null;
-
-    // ==========================================
-    // SVG Icons Dictionary (Lucide style)
-    // ==========================================
-    const icons = {
-      AlertTriangle: `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
-      FileText: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`,
-      Globe: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>`,
-      LogOut: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>`,
-      Users: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-      UserSwitch: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 11-3 3-3-3"/><path d="M19 14V4"/></svg>`,
-      List: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>`,
-      DollarSign: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
-      Settings: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
-      ArrowRight: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
-      CheckCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>`,
-      XCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>`,
-      Eye: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`,
-      CreditCard: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>`,
-      CheckSquare: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`
-    };
-
-    // ==========================================
-    // Translations
-    // ==========================================
-    const trans = {
-      loading: { bn: "লোড হচ্ছে...", en: "Loading..." },
-      welcome: { bn: "পোর্টাল-এ স্বাগতম", en: "Welcome to Portal" },
-      adminHint: { bn: "অ্যাডমিন প্যানেল দেখতে ইউজারনেম 'admin' দিন। যেকোনো নতুন ইউজারনেম ও পাসওয়ার্ড দিয়ে একাউন্ট তৈরি করতে পারবেন।", en: "Use username 'admin' for Admin Panel. Create a new account using any username and password." },
-      username: { bn: "ইউজারনেম", en: "Username" },
-      password: { bn: "পাসওয়ার্ড (Password)", en: "Password" },
-      uid: { bn: "ইউআইডি (UID)", en: "UID" },
-      processing: { bn: "প্রসেসিং...", en: "Processing..." },
-      loginModeTitle: { bn: "লগইন করুন", en: "Login to Account" },
-      registerModeTitle: { bn: "নতুন একাউন্ট খুলুন", en: "Create New Account" },
-      switchToRegister: { bn: "একাউন্ট নেই? রেজিস্ট্রেশন করুন", en: "No account? Register here" },
-      switchToLogin: { bn: "একাউন্ট আছে? লগইন করুন", en: "Have an account? Login here" },
-      registerBtn: { bn: "রেজিস্ট্রেশন করুন", en: "Register" },
-      loginOnlyBtn: { bn: "লগইন করুন", en: "Login" },
-      adminView: { bn: "অ্যাডমিন ভিউ", en: "Admin View" },
-      userView: { bn: "ইউজার ভিউ", en: "User View" },
-      dataSubmit: { bn: "ডাটা সাবমিট", en: "Submit Data" },
-      subHistory: { bn: "সাবমিশন হিস্ট্রি", en: "History" },
-      withdraw: { bn: "উত্তোলন", en: "Withdraw" },
-      newSubmit: { bn: "নতুন ডাটা সাবমিট করুন", en: "Submit New Data" },
-      smartPaste: { bn: "স্মার্ট পেস্ট", en: "Smart Paste" },
-      reset: { bn: "রিসেট", en: "Reset" },
-      catSelect: { bn: "ক্যাটাগরি সিলেক্ট করুন", en: "Select Category" },
-      each: { bn: "প্রতিটি:", en: "Each:" },
-      enterDataInfo: { bn: "আপনার ডাটা দিন (গুগল শিটের মতো সরাসরি বক্সে লিখতে পারেন বা পেস্ট করতে পারেন)", en: "Enter your data (type directly or paste like Google Sheets)" },
-      dupWarning: { bn: "* ডুপ্লিকেট ডাটা অটোমেটিক রিমুভ হয়ে যাবে।", en: "* Duplicate data will be removed automatically." },
-      submitBtn: { bn: "সাবমিট করুন", en: "Submit" },
-      pasteInstruction: { bn: "এখানে আপনার এক্সেল বা গুগল শিটের ডাটা কপি করে পেস্ট করুন।", en: "Copy and paste your Excel/Sheets data here." },
-      cancel: { bn: "বাতিল", en: "Cancel" },
-      apply: { bn: "এপ্লাই করুন", en: "Apply" },
-      subList: { bn: "আপনার সাবমিশন সমূহ", en: "Your Submissions" },
-      noSub: { bn: "কোনো সাবমিশন পাওয়া যায়নি।", en: "No submissions found." },
-      totalData: { bn: "মোট ডাটা:", en: "Total Data:" },
-      details: { bn: "বিস্তারিত", en: "Details" },
-      subDetails: { bn: "সাবমিশন বিস্তারিত", en: "Submission Details" },
-      status: { bn: "স্ট্যাটাস", en: "Status" },
-      payMethod: { bn: "পেমেন্ট মেথড সেটিং", en: "Payment Method Setting" },
-      method: { bn: "মাধ্যম", en: "Method" },
-      accNo: { bn: "একাউন্ট নাম্বার", en: "Account Number" },
-      save: { bn: "সেভ করুন", en: "Save" },
-      withdrawMoney: { bn: "টাকা উত্তোলন", en: "Withdraw Money" },
-      withdrawBal: { bn: "উত্তোলনযোগ্য ব্যালেন্স", en: "Withdrawable Balance" },
-      amount: { bn: "পরিমাণ (৳)", en: "Amount (৳)" },
-      minAmnt: { bn: "কমপক্ষে ১০০ টাকা", en: "Min. 100 Taka" },
-      withdrawAll: { bn: "সব তুলুন", en: "Withdraw All" },
-      sendReq: { bn: "রিকোয়েস্ট পাঠান", en: "Send Request" },
-      withdrawHist: { bn: "উত্তোলনের ইতিহাস", en: "Withdrawal History" },
-      noRecord: { bn: "কোনো রেকর্ড নেই।", en: "No records found." },
-      pendWork: { bn: "অপেক্ষমান কাজ", en: "Pending Work" },
-      userList: { bn: "ইউজার লিস্ট", en: "User List" },
-      withReq: { bn: "উত্তোলন রিকোয়েস্ট", en: "Withdraw Requests" },
-      settings: { bn: "সেটিংস", en: "Settings" },
-      adminSubList: { bn: "সাবমিশন লিস্ট", en: "Submission List" },
-      reviewBtn: { bn: "রিভিউ করুন", en: "Review" },
-      paidComp: { bn: "পেমেন্ট সম্পন্ন", en: "Payment Complete" },
-      reviewTitle: { bn: "রিভিউ:", en: "Review:" },
-      cat: { bn: "ক্যাটাগরি:", en: "Category:" },
-      priceData: { bn: "মূল্য: ৳", en: "Price: ৳" },
-      perData: { bn: "প্রতি ডাটা", en: "Per Data" },
-      acceptRem: { bn: "বাকি সব একসেপ্ট করুন", en: "Accept Remaining" },
-      compSub: { bn: "সাবমিশন সম্পন্ন করুন", en: "Complete Submission" },
-      action: { bn: "অ্যাকশন", en: "Action" },
-      name: { bn: "নাম", en: "Name" },
-      curBal: { bn: "বর্তমান ব্যালেন্স", en: "Current Balance" },
-      totEarn: { bn: "মোট আয়", en: "Total Earned" },
-      reqBy: { bn: "রিকোয়েস্ট করেছে", en: "requested" },
-      priceSetting: { bn: "মূল্য নির্ধারণ (প্রতি ডাটা)", en: "Price Settings (Per Data)" }
-    };
-    const t = (key) => trans[key] ? trans[key][state.lang] : key;
+    const appId = 'data-portal-pro';
 
     // ==========================================
     // Global State
     // ==========================================
     const state = {
+      loading: true,
+      errorMessage: '',
       lang: 'bn',
-      user: null,
-      activeUsername: null,
-      profile: null,
+      user: null, 
+      profile: null, 
       prices: { '615x': 2, '1000x': 5 },
       forceUserView: false,
       tab: 'submit',
       adminTab: 'pending',
-      
-      // Data Arrays
       gridData: Array.from({ length: 100 }, () => Array(4).fill('')),
       submitType: '615x',
       submissions: [],
       withdrawals: [],
       users: [],
-      
-      // UI Modals & Loading
       isLoginMode: true,
       authError: '',
       isSubmittingAuth: false,
       isSubmittingData: false,
       submitMessage: '',
       showPasteModal: false,
-      pasteText: '',
-      viewingSub: null, // User details modal
-      reviewingTask: null, // Admin review modal
+      viewingSub: null,
+      reviewingTask: null,
       isSavingMethod: false,
       withdrawMessage: '',
       adminErrorMsg: '',
       isAdminProcessing: false
     };
 
-    let unsubSettings = null, unsubProfile = null, unsubData = null;
+    let appInst, authInst, dbInst;
+    let unsubs = [];
+
+    const getCol = (name) => collection(dbInst, 'artifacts', appId, 'public', 'data', name);
+    const getDocRef = (name, id) => doc(dbInst, 'artifacts', appId, 'public', 'data', name, id);
 
     // ==========================================
-    // Render Engine (Vanilla JS)
+    // Logic Functions
     // ==========================================
-    const appEl = document.getElementById('app');
+    async function boot() {
+      try {
+        appInst = initializeApp(firebaseConfig);
+        authInst = getAuth(appInst);
+        dbInst = getFirestore(appInst);
 
+        onAuthStateChanged(authInst, async (currentUser) => {
+          if (currentUser) {
+            state.user = currentUser;
+            await syncUserProfile(currentUser);
+          } else {
+            cleanupUnsubs();
+            state.user = null;
+            state.profile = null;
+            state.loading = false;
+            render();
+          }
+        });
+      } catch (err) {
+        state.errorMessage = "Firebase সমস্যা হয়েছে।";
+        state.loading = false;
+        render();
+      }
+    }
+
+    function cleanupUnsubs() {
+      unsubs.forEach(unsub => unsub());
+      unsubs = [];
+    }
+
+    async function syncUserProfile(firebaseUser) {
+      const userRef = getDocRef('users', firebaseUser.uid);
+      const docSnap = await getDoc(userRef);
+
+      if (!docSnap.exists()) {
+        const isDefaultAdmin = firebaseUser.email === 'admin@portal.com';
+        const newProfile = {
+          name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          email: firebaseUser.email,
+          role: isDefaultAdmin ? 'admin' : 'user',
+          balance: 0,
+          totalEarned: 0,
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(userRef, newProfile);
+        state.profile = { id: firebaseUser.uid, ...newProfile };
+      } else {
+        state.profile = { id: docSnap.id, ...docSnap.data() };
+      }
+      
+      setupRealtimeListeners();
+    }
+
+    function setupRealtimeListeners() {
+      cleanupUnsubs();
+
+      unsubs.push(onSnapshot(getDocRef('settings', 'pricing'), (doc) => {
+        if(doc.exists()) {
+          state.prices = doc.data();
+          render();
+        }
+      }, (err) => console.error("Pricing error:", err)));
+
+      unsubs.push(onSnapshot(getDocRef('users', state.user.uid), (docSnap) => {
+        if (docSnap.exists()) {
+           state.profile = { id: docSnap.id, ...docSnap.data() };
+           render();
+        }
+      }, (err) => console.error("Profile error:", err)));
+
+      unsubs.push(onSnapshot(getCol('submissions'), (snap) => {
+        const subs = [];
+        snap.forEach(d => {
+           const data = { id: d.id, ...d.data() };
+           if(state.profile.role === 'admin' || data.userId === state.user.uid) subs.push(data);
+        });
+        subs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        state.submissions = subs; 
+        render();
+      }, (err) => console.error("Submissions error:", err)));
+
+      unsubs.push(onSnapshot(getCol('withdrawals'), (snap) => {
+        const ws = [];
+        snap.forEach(d => {
+           const data = { id: d.id, ...d.data() };
+           if(state.profile.role === 'admin' || data.userId === state.user.uid) ws.push(data);
+        });
+        ws.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        state.withdrawals = ws; render();
+      }, (err) => console.error("Withdrawals error:", err)));
+      
+      if(state.profile.role === 'admin') {
+         unsubs.push(onSnapshot(getCol('users'), (snap) => {
+            const us = [];
+            snap.forEach(d => { const data = { id: d.id, ...d.data() }; if(data.role !== 'admin') us.push(data); });
+            state.users = us; render();
+         }, (err) => console.error("Users list error:", err)));
+      }
+
+      state.loading = false;
+      render();
+    }
+
+    // ==========================================
+    // UI Templates
+    // ==========================================
     function render() {
-      if (!isFirebaseConfigured) {
-        appEl.innerHTML = renderMissingConfig();
+      const root = document.getElementById('app');
+      if (state.loading) {
+        root.innerHTML = `<div class="min-h-screen flex items-center justify-center bg-m3-surface"><div class="animate-spin rounded-full h-12 w-12 border-4 border-m3-surfaceVariant border-t-m3-primary"></div></div>`;
         return;
       }
-      if (state.user === undefined) { // Initial loading
-        appEl.innerHTML = renderLoading();
+      if (!state.user) {
+        root.innerHTML = renderLoginScreen();
         return;
       }
-      if (!state.activeUsername || !state.profile) {
-        appEl.innerHTML = renderLogin();
-        return;
-      }
-      appEl.innerHTML = renderMainApp();
-      attachSpreadsheetListeners();
+      root.innerHTML = renderDashboard();
+      attachDOMListeners();
     }
 
-    // ==========================================
-    // View Templates
-    // ==========================================
-    function renderMissingConfig() {
+    function renderLoginScreen() {
       return `
-        <div class="min-h-screen flex items-center justify-center bg-m3-surface p-4">
-          <div class="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-m3-surfaceVariant max-w-lg w-full text-center">
-            <div class="w-20 h-20 bg-m3-errorContainer text-m3-error rounded-full flex items-center justify-center mx-auto mb-6">
-              ${icons.AlertTriangle}
-            </div>
-            <h2 class="text-2xl font-bold text-m3-onSurface mb-4 tracking-tight">Firebase Config Missing!</h2>
-            <p class="text-m3-onSurfaceVariant font-medium mb-6">
-              আপনার ফায়ারবেস কনফিগারেশন যোগ করা হয়নি। অনুগ্রহ করে কোডের <code class="bg-m3-surfaceVariant px-2 py-1 rounded">userFirebaseConfig</code> অংশে আপনার Firebase API Key এবং অন্যান্য তথ্য বসিয়ে নিন।
-            </p>
-            <p class="text-sm text-m3-onSurfaceVariant/70">
-              You must add your Firebase configuration inside the <code>index.html</code> file for the app to run.
-            </p>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderLoading() {
-      return `
-        <div class="min-h-screen flex items-center justify-center bg-m3-surface">
-          <div class="flex flex-col items-center gap-4">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-m3-surfaceVariant border-t-m3-primary"></div>
-            <p class="text-m3-primary font-bold text-sm tracking-widest uppercase">${t('loading')}</p>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderLogin() {
-      return `
-        <div class="min-h-screen flex items-center justify-center bg-m3-surface p-4 relative overflow-hidden fade-in">
-          <div class="absolute top-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-m3-primaryContainer rounded-full blur-3xl opacity-50"></div>
-          <div class="absolute bottom-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-m3-secondaryContainer rounded-full blur-3xl opacity-50"></div>
-
-          <div class="absolute top-4 right-4 z-50">
-            <button onclick="handleAction('toggleLang')" class="flex items-center gap-2 p-2 px-5 bg-m3-surfaceVariant text-m3-onSurfaceVariant rounded-full hover:bg-m3-secondaryContainer transition-all font-bold text-sm shadow-sm">
-              ${icons.Globe} ${state.lang === 'bn' ? 'EN' : 'BN'}
-            </button>
-          </div>
-
-          <div class="bg-white/80 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] shadow-xl max-w-md w-full relative z-10 border border-white">
-            <div class="flex justify-center mb-6">
-              <div class="p-4 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-3xl shadow-sm">
-                ${icons.FileText}
-              </div>
-            </div>
-            <h2 class="text-3xl font-bold text-center text-m3-onSurface mb-3 tracking-tight">${state.isLoginMode ? t('loginModeTitle') : t('registerModeTitle')}</h2>
-            <p class="text-m3-onSurfaceVariant mb-8 text-center text-sm font-medium">
-              ${t('adminHint')}
-            </p>
-
-            ${state.authError ? `<div class="mb-6 p-4 bg-m3-errorContainer text-m3-onErrorContainer rounded-2xl text-sm font-bold flex items-center gap-3">${icons.XCircle} ${state.authError}</div>` : ''}
-
-            <form onsubmit="handleAction('submitAuth', event)" class="space-y-5">
-              <div>
-                <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">${t('username')}</label>
-                <input id="authUsername" type="text" required class="w-full p-4 bg-m3-surfaceVariant/50 text-m3-onSurface rounded-2xl focus:bg-m3-surface focus:ring-2 focus:ring-m3-primary outline-none font-medium placeholder-m3-onSurfaceVariant/50" placeholder="e.g. rahim99">
-              </div>
-              <div>
-                <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">${t('password')}</label>
-                <input id="authPassword" type="password" required class="w-full p-4 bg-m3-surfaceVariant/50 text-m3-onSurface rounded-2xl focus:bg-m3-surface focus:ring-2 focus:ring-m3-primary outline-none font-medium placeholder-m3-onSurfaceVariant/50" placeholder="••••••••">
-              </div>
-              <button type="submit" ${state.isSubmittingAuth ? 'disabled' : ''} class="w-full bg-m3-primary text-m3-onPrimary p-4 rounded-full font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 mt-4 shadow-md flex justify-center items-center gap-2">
-                ${state.isSubmittingAuth ? t('processing') : (state.isLoginMode ? t('loginOnlyBtn') : t('registerBtn'))}
+        <div class="min-h-screen flex items-center justify-center bg-m3-surface p-4 fade-in">
+          <div class="bg-white/90 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] shadow-xl max-w-md w-full border border-white">
+            <h2 class="text-3xl font-bold text-center text-m3-onSurface mb-2">${state.isLoginMode ? 'লগইন করুন' : 'নতুন একাউন্ট'}</h2>
+            <p class="text-sm text-center text-m3-onSurfaceVariant mb-8">পোর্টালটি ব্যবহার করতে সাইন-ইন করুন</p>
+            ${state.authError ? `<div class="mb-4 p-3 bg-m3-errorContainer text-m3-error rounded-xl text-xs font-bold">⚠️ ${state.authError}</div>` : ''}
+            <form onsubmit="window.handleEmailAuth(event)" class="space-y-4">
+              <input id="login-email" type="email" required class="w-full p-4 bg-m3-surface rounded-2xl outline-none ring-1 ring-m3-surfaceVariant focus:ring-2 focus:ring-m3-primary" placeholder="Email Address">
+              <input id="login-password" type="password" required class="w-full p-4 bg-m3-surface rounded-2xl outline-none ring-1 ring-m3-surfaceVariant focus:ring-2 focus:ring-m3-primary" placeholder="Password">
+              <button type="submit" class="w-full bg-m3-primary text-white p-4 rounded-full font-bold shadow-md hover:opacity-90">
+                ${state.isSubmittingAuth ? 'প্রসেসিং...' : (state.isLoginMode ? 'লগইন' : 'রেজিস্টার')}
               </button>
             </form>
-
-            <div class="mt-8 text-center">
-              <button onclick="handleAction('toggleAuthMode')" class="text-sm font-bold text-m3-primary hover:text-m3-onPrimaryContainer bg-m3-primaryContainer/30 px-6 py-2 rounded-full transition-colors">
-                ${state.isLoginMode ? t('switchToRegister') : t('switchToLogin')}
-              </button>
-            </div>
+            <div class="flex items-center my-6 text-m3-onSurfaceVariant/50"><div class="flex-1 h-px bg-current"></div><div class="px-4 text-[10px] font-black uppercase tracking-widest">অথবা</div><div class="flex-1 h-px bg-current"></div></div>
+            <button onclick="window.handleGoogleAuth()" class="w-full bg-white border border-m3-surfaceVariant p-4 rounded-full font-bold flex items-center justify-center gap-3 hover:bg-m3-surface transition-all shadow-sm">
+              <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+              Google দিয়ে প্রবেশ করুন
+            </button>
+            <button onclick="window.toggleAuthMode()" class="w-full mt-6 text-sm font-bold text-m3-primary hover:underline">
+              ${state.isLoginMode ? 'নতুন একাউন্ট তৈরি করুন' : 'আগের একাউন্টে লগইন করুন'}
+            </button>
           </div>
         </div>
       `;
     }
 
-    function renderMainApp() {
-      const isActuallyAdmin = state.profile.role === 'admin';
-      const isViewingAdmin = isActuallyAdmin && !state.forceUserView;
-
+    function renderDashboard() {
+      const isAdmin = state.profile.role === 'admin' && !state.forceUserView;
       return `
-        <div class="min-h-screen bg-m3-surface font-sans fade-in selection:bg-m3-primaryContainer selection:text-m3-onPrimaryContainer pb-24">
-          <!-- Navbar -->
+        <div class="min-h-screen bg-m3-surface fade-in pb-24">
           <nav class="p-4 md:p-6 sticky top-0 z-40">
-            <div class="max-w-5xl mx-auto bg-white/90 backdrop-blur-xl rounded-full px-4 py-3 shadow-sm border border-white/50 flex justify-between items-center">
-              <div class="flex items-center gap-3 pl-2">
-                <div class="p-2 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-full">
-                  ${icons.FileText.replace('width="24" height="24"', 'width="20" height="20"')}
-                </div>
-                <span class="text-xl font-bold text-m3-onSurface tracking-tight hidden sm:block">${t('portalName')}</span>
-              </div>
-
-              <div class="flex items-center gap-2 md:gap-4 pr-1">
-                <button onclick="handleAction('toggleLang')" class="p-2 rounded-full hover:bg-m3-surfaceVariant text-m3-onSurfaceVariant transition-colors" title="Change Language">
-                  ${icons.Globe}
-                </button>
-
-                ${isActuallyAdmin ? `
-                  <button onclick="handleAction('toggleForceUser')" class="flex items-center gap-1.5 text-xs font-bold px-4 py-2.5 rounded-full bg-m3-secondaryContainer text-m3-onSecondaryContainer hover:opacity-90 transition-all">
-                    ${icons.UserSwitch}
-                    <span class="hidden md:inline">${state.forceUserView ? t('adminView') : t('userView')}</span>
-                  </button>
-                ` : ''}
-
-                <div class="hidden md:flex flex-col items-end px-3">
-                  <span class="text-sm font-bold text-m3-onSurface">${state.profile.name}</span>
-                  <span class="text-[10px] text-m3-onSurfaceVariant uppercase font-bold tracking-widest">${isViewingAdmin ? 'Admin' : 'User'}</span>
-                </div>
-                
-                ${(!isViewingAdmin) ? `
-                  <div class="bg-m3-successContainer text-m3-onSuccessContainer px-5 py-2 rounded-full font-bold text-sm">
-                    ৳ ${state.profile.balance}
-                  </div>
-                ` : ''}
-
-                <button onclick="handleAction('logout')" title="Log Out" class="p-3 text-m3-error hover:bg-m3-errorContainer rounded-full transition-all">
-                  ${icons.LogOut}
-                </button>
+            <div class="max-w-5xl mx-auto bg-white/90 backdrop-blur-xl rounded-full px-6 py-3 shadow-sm border border-white/50 flex justify-between items-center">
+              <span class="text-xl font-bold text-m3-onSurface tracking-tighter">DATA PORTAL</span>
+              <div class="flex items-center gap-3">
+                ${state.profile.role === 'admin' ? `<button onclick="window.toggleForceUser()" class="text-[10px] uppercase font-black tracking-widest px-4 py-2 rounded-full bg-m3-secondaryContainer text-m3-onSecondaryContainer">${state.forceUserView ? 'ADMIN' : 'USER'}</button>` : ''}
+                ${!isAdmin ? `<div class="bg-m3-successContainer text-m3-onSuccessContainer px-5 py-2 rounded-full font-black text-sm shadow-sm">৳ ${state.profile.balance}</div>` : ''}
+                <button onclick="window.logout()" class="text-m3-error bg-m3-errorContainer/30 p-2 rounded-full hover:bg-m3-errorContainer"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
               </div>
             </div>
           </nav>
-
-          <!-- Dashboard Content -->
           <main class="max-w-5xl mx-auto p-4 md:p-6">
-            ${isViewingAdmin ? renderAdminDashboard() : renderUserDashboard()}
+             ${isAdmin ? renderAdminArea() : renderUserArea()}
           </main>
-        </div>
-
-        <!-- Modals Layer -->
-        <div id="modal-root">
           ${state.showPasteModal ? renderPasteModal() : ''}
           ${state.viewingSub ? renderViewDetailsModal() : ''}
           ${state.reviewingTask ? renderReviewModal() : ''}
@@ -420,107 +298,74 @@
       `;
     }
 
-    function renderUserDashboard() {
+    function renderUserArea() {
       return `
-        <div class="flex bg-m3-surfaceVariant/50 p-1.5 rounded-full mb-8 overflow-x-auto no-scrollbar w-fit mx-auto shadow-sm border border-white">
-          <button onclick="handleAction('setTab', 'submit')" class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${state.tab === 'submit' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant hover:bg-white/50'}">${icons.FileText.replace('24','18').replace('24','18')} ${t('dataSubmit')}</button>
-          <button onclick="handleAction('setTab', 'history')" class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${state.tab === 'history' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant hover:bg-white/50'}">${icons.List} ${t('subHistory')}</button>
-          <button onclick="handleAction('setTab', 'withdraw')" class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${state.tab === 'withdraw' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant hover:bg-white/50'}">${icons.DollarSign} ${t('withdraw')}</button>
+        <div class="flex bg-m3-surfaceVariant/50 p-1.5 rounded-full mb-8 overflow-x-auto no-scrollbar w-fit mx-auto shadow-sm">
+          <button onclick="window.setTab('submit')" class="px-6 py-2.5 rounded-full font-bold text-sm ${state.tab === 'submit' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant'}">ডাটা সাবমিট</button>
+          <button onclick="window.setTab('history')" class="px-6 py-2.5 rounded-full font-bold text-sm ${state.tab === 'history' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant'}">হিস্ট্রি</button>
+          <button onclick="window.setTab('withdraw')" class="px-6 py-2.5 rounded-full font-bold text-sm ${state.tab === 'withdraw' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant'}">উত্তোলন</button>
         </div>
-
-        <div class="transition-all">
-          ${state.tab === 'submit' ? renderSubmitData() : ''}
-          ${state.tab === 'history' ? renderUserHistory() : ''}
-          ${state.tab === 'withdraw' ? renderUserWithdraw() : ''}
-        </div>
+        ${state.tab === 'submit' ? renderSubmitForm() : ''}
+        ${state.tab === 'history' ? renderUserHistory() : ''}
+        ${state.tab === 'withdraw' ? renderUserWithdraw() : ''}
       `;
     }
 
-    function renderSubmitData() {
-      // Pre-generate spreadsheet HTML
+    function renderSubmitForm() {
       let gridHtml = '';
-      const colLabels = ['A', 'B', 'C', 'D'];
       for(let r=0; r<100; r++) {
-         gridHtml += `<tr class="hover:bg-m3-primaryContainer/20 focus-within:bg-m3-primaryContainer/30 transition-colors group">
-            <td class="sticky left-0 border-b border-r border-m3-outline/20 bg-m3-surface group-hover:bg-m3-primaryContainer/20 text-center text-xs font-bold text-m3-onSurfaceVariant/70 w-12 select-none z-0">${r + 1}</td>`;
+         gridHtml += `<tr class="hover:bg-m3-primaryContainer/20 transition-colors">
+            <td class="text-center text-[10px] font-black text-m3-onSurfaceVariant/50 bg-m3-surface border-r border-b border-m3-outline/20 w-12">${r + 1}</td>`;
          for(let c=0; c<4; c++) {
-            gridHtml += `<td class="border-b border-r border-m3-outline/20 p-0 h-10">
-              <input type="text" data-r="${r}" data-c="${c}" class="spreadsheet-cell w-full h-full px-3 outline-none focus:ring-2 focus:ring-m3-primary focus:z-20 relative rounded-none border-none text-sm bg-transparent font-medium text-m3-onSurface" value="${state.gridData[r][c]}">
+            gridHtml += `<td class="p-0 border-r border-b border-m3-outline/20 h-10">
+              <input type="text" data-r="${r}" data-c="${c}" class="spreadsheet-cell w-full h-full px-3 outline-none focus:bg-white text-sm bg-transparent" value="${state.gridData[r][c]}">
             </td>`;
          }
          gridHtml += `</tr>`;
       }
-
       return `
-        <div class="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant fade-in">
-          <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
-            <h2 class="text-2xl font-bold text-m3-onSurface tracking-tight">${t('newSubmit')}</h2>
-            <div class="flex gap-3">
-              <button onclick="handleAction('openPaste')" class="px-5 py-2.5 bg-m3-primaryContainer text-m3-onPrimaryContainer font-bold rounded-full hover:opacity-90 transition-all text-sm flex items-center gap-2">📋 ${t('smartPaste')}</button>
-              <button onclick="handleAction('resetGrid')" class="px-5 py-2.5 bg-m3-errorContainer text-m3-onErrorContainer font-bold rounded-full hover:opacity-90 transition-all text-sm flex items-center gap-2">🔄 ${t('reset')}</button>
+        <div class="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-m3-surfaceVariant fade-in">
+          <div class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-bold text-m3-onSurface tracking-tight">ডাটা এন্ট্রি করুন</h2>
+            <div class="flex gap-2">
+              <button onclick="window.openPasteModal()" class="bg-m3-primaryContainer text-m3-onPrimaryContainer px-5 py-2 rounded-full font-bold text-sm shadow-sm">📋 স্মার্ট পেস্ট</button>
+              <button onclick="window.resetGrid()" class="bg-m3-errorContainer text-m3-error px-5 py-2 rounded-full font-bold text-sm shadow-sm">🔄 রিসেট</button>
             </div>
           </div>
-
-          ${state.submitMessage ? `
-            <div class="mb-8 p-4 rounded-2xl text-sm font-bold flex items-center gap-3 ${state.submitMessage.includes('সমস্যা') || state.submitMessage.includes('Error') || state.submitMessage.includes('No data') || state.submitMessage.includes('কোনো ডাটা') ? 'bg-m3-errorContainer text-m3-onErrorContainer' : 'bg-m3-successContainer text-m3-onSuccessContainer'}">
-              ${icons.CheckCircle.replace('16','20').replace('16','20')} ${state.submitMessage}
-            </div>
-          ` : ''}
-          
-          <form onsubmit="handleAction('submitSpreadsheet', event)" class="space-y-8">
-            <div>
-              <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-3 ml-2">${t('catSelect')}</label>
-              <div class="grid grid-cols-2 gap-4">
-                <label class="cursor-pointer p-6 border-2 rounded-[1.5rem] text-center transition-all ${state.submitType === '615x' ? 'border-m3-primary bg-m3-primaryContainer/30 text-m3-primary' : 'border-m3-surfaceVariant bg-m3-surface hover:bg-m3-surfaceVariant/50'}">
-                  <input type="radio" name="type" class="hidden" ${state.submitType === '615x' ? 'checked' : ''} onclick="handleAction('setSubmitType','615x')">
-                  <div class="font-bold text-lg">PC Clone 615x</div>
-                  <div class="text-sm font-medium mt-1 opacity-80">${t('each')} ৳${state.prices['615x']}</div>
-                </label>
-                <label class="cursor-pointer p-6 border-2 rounded-[1.5rem] text-center transition-all ${state.submitType === '1000x' ? 'border-m3-primary bg-m3-primaryContainer/30 text-m3-primary' : 'border-m3-surfaceVariant bg-m3-surface hover:bg-m3-surfaceVariant/50'}">
-                  <input type="radio" name="type" class="hidden" ${state.submitType === '1000x' ? 'checked' : ''} onclick="handleAction('setSubmitType','1000x')">
-                  <div class="font-bold text-lg">PC Clone 1000x</div>
-                  <div class="text-sm font-medium mt-1 opacity-80">${t('each')} ৳${state.prices['1000x']}</div>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-3 ml-2">${t('enterDataInfo')}</label>
-              
-              <div class="overflow-auto max-h-[400px] border border-m3-surfaceVariant rounded-[1.5rem] bg-white">
-                <table class="w-full border-collapse table-fixed" id="spreadsheet-table">
-                  <thead class="sticky top-0 z-10 bg-m3-surfaceVariant">
-                    <tr>
-                       <th class="w-12 border-b border-r border-m3-outline/20"></th>
-                       ${colLabels.map(label => `<th class="border-b border-r border-m3-outline/20 px-3 py-2 font-bold text-m3-onSurfaceVariant text-sm">${label}</th>`).join('')}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${gridHtml}
-                  </tbody>
-                </table>
-              </div>
-              <p class="text-xs font-bold text-m3-error mt-3 ml-2">${t('dupWarning')}</p>
-            </div>
-
-            <button type="submit" ${state.isSubmittingData ? 'disabled' : ''} class="w-full bg-m3-primary text-m3-onPrimary p-5 rounded-full font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-md flex justify-center items-center gap-2">
-              ${state.isSubmittingData ? t('processing') : `${t('submitBtn')} ${icons.ArrowRight}`}
-            </button>
-          </form>
+          ${state.submitMessage ? `<div class="mb-6 p-4 rounded-2xl text-sm font-bold bg-m3-successContainer text-m3-onSuccessContainer shadow-sm border border-m3-success">${state.submitMessage}</div>` : ''}
+          <div class="grid grid-cols-2 gap-4 mb-8">
+             <button onclick="window.setSubmitType('615x')" class="p-6 border-2 rounded-[2rem] text-center transition-all ${state.submitType === '615x' ? 'border-m3-primary bg-m3-primaryContainer/30' : 'border-m3-surfaceVariant'}">
+                <div class="font-black text-m3-onSurface">615x</div><div class="text-xs opacity-70 mt-1">৳${state.prices['615x']} প্রতিটি</div>
+             </button>
+             <button onclick="window.setSubmitType('1000x')" class="p-6 border-2 rounded-[2rem] text-center transition-all ${state.submitType === '1000x' ? 'border-m3-primary bg-m3-primaryContainer/30' : 'border-m3-surfaceVariant'}">
+                <div class="font-black text-m3-onSurface">1000x</div><div class="text-xs opacity-70 mt-1">৳${state.prices['1000x']} প্রতিটি</div>
+             </button>
+          </div>
+          <div class="overflow-auto max-h-[400px] border border-m3-surfaceVariant rounded-3xl mb-8">
+            <table class="w-full border-collapse" id="spreadsheet">
+              <thead class="sticky top-0 bg-m3-surfaceVariant z-10 text-[10px] font-black tracking-widest text-m3-onSurfaceVariant/70 uppercase">
+                <tr><th class="w-12 border-r border-m3-outline/20 p-3">#</th><th class="p-3">A</th><th class="p-3">B</th><th class="p-3">C</th><th class="p-3">D</th></tr>
+              </thead>
+              <tbody>${gridHtml}</tbody>
+            </table>
+          </div>
+          <button onclick="window.submitData()" ${state.isSubmittingData ? 'disabled' : ''} class="w-full bg-m3-primary text-m3-onPrimary py-5 rounded-full font-black text-lg hover:opacity-90 shadow-lg shadow-m3-primary/20">
+             ${state.isSubmittingData ? 'সাবমিট হচ্ছে...' : 'সাবমিট করুন'}
+          </button>
         </div>
       `;
     }
 
     function renderPasteModal() {
       return `
-        <div class="fixed inset-0 bg-m3-onSurface/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in">
-          <div class="bg-white rounded-[2rem] shadow-xl max-w-lg w-full p-8 md:p-10">
-            <h3 class="font-bold text-2xl mb-2 text-m3-onSurface">${t('smartPaste')}</h3>
-            <p class="text-sm font-medium text-m3-onSurfaceVariant mb-6">${t('pasteInstruction')}</p>
-            <textarea id="paste-textarea" class="w-full h-48 bg-m3-surface border border-m3-surfaceVariant rounded-2xl p-4 mb-8 focus:ring-2 focus:ring-m3-primary outline-none resize-none font-mono text-sm" placeholder="Ctrl+V..." oninput="handleAction('updatePasteText', event)">${state.pasteText}</textarea>
+        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in">
+          <div class="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl">
+            <h3 class="font-bold text-2xl mb-4 text-m3-onSurface">স্মার্ট পেস্ট</h3>
+            <p class="text-xs text-m3-onSurfaceVariant mb-4">গুগল শিট থেকে ডাটা কপি করে এখানে পেস্ট করুন (UID এবং Password)</p>
+            <textarea id="pasteArea" class="w-full h-48 bg-m3-surface border border-m3-surfaceVariant rounded-[1.5rem] p-5 mb-6 outline-none focus:ring-2 focus:ring-m3-primary" placeholder="UID [TAB] Password..."></textarea>
             <div class="flex justify-end gap-3">
-              <button onclick="handleAction('closePaste')" class="px-6 py-3 text-m3-onSurfaceVariant font-bold hover:bg-m3-surfaceVariant rounded-full transition-all">${t('cancel')}</button>
-              <button onclick="handleAction('applyPaste')" class="px-6 py-3 bg-m3-primary text-m3-onPrimary font-bold rounded-full hover:opacity-90 shadow-md transition-all">${t('apply')}</button>
+              <button onclick="window.closePasteModal()" class="px-6 py-2 bg-m3-surfaceVariant rounded-full font-bold text-m3-onSurfaceVariant">বাতিল</button>
+              <button onclick="window.applyPaste()" class="px-8 py-2 bg-m3-primary text-m3-onPrimary rounded-full font-bold shadow-md">এপ্লাই</button>
             </div>
           </div>
         </div>
@@ -528,87 +373,49 @@
     }
 
     function renderUserHistory() {
-      return `
-        <div class="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant fade-in">
-          <h2 class="text-2xl font-bold mb-8 text-m3-onSurface tracking-tight">${t('subList')}</h2>
-          
-          ${state.submissions.length === 0 ? `
-            <div class="text-center py-20 bg-m3-surface rounded-3xl border border-dashed border-m3-outline/30">
-              <div class="flex justify-center text-m3-onSurfaceVariant/50 mb-4">${icons.FileText.replace('24','48').replace('24','48')}</div>
-              <p class="text-m3-onSurfaceVariant font-bold">${t('noSub')}</p>
+      if(state.submissions.length === 0) return `<div class="text-center p-20 bg-white rounded-[2.5rem] font-bold text-m3-onSurfaceVariant border border-m3-surfaceVariant fade-in">কোনো ডাটা সাবমিট করা হয়নি।</div>`;
+      return `<div class="space-y-4 fade-in">
+        ${state.submissions.map(sub => `
+          <div class="bg-white p-6 rounded-[1.5rem] flex flex-col md:flex-row justify-between md:items-center gap-4 shadow-sm border border-m3-surfaceVariant">
+            <div>
+              <div class="font-black text-lg text-m3-onSurface">${sub.type} <span class="text-[9px] bg-m3-primaryContainer text-m3-onPrimaryContainer px-2 py-0.5 rounded-full ml-2 uppercase font-black tracking-widest">${sub.status}</span></div>
+              <div class="text-xs text-m3-onSurfaceVariant mt-1">মোট ডাটা: ${sub.totalItems} | তারিখ: ${new Date(sub.createdAt).toLocaleDateString()}</div>
             </div>
-          ` : `
-            <div class="space-y-4">
-              ${state.submissions.map(sub => `
-                <div class="bg-m3-surface border border-m3-surfaceVariant p-5 md:p-6 rounded-[1.5rem] flex flex-col md:flex-row justify-between items-start md:items-center gap-5 hover:shadow-md transition-shadow">
-                  <div>
-                    <div class="flex items-center gap-3 mb-2">
-                      <span class="font-bold text-m3-onSurface text-lg">${sub.type === '615x' ? 'PC Clone 615x' : 'PC Clone 1000x'}</span>
-                      ${renderBadge(sub.status)}
-                    </div>
-                    <div class="text-sm font-medium text-m3-onSurfaceVariant flex items-center gap-3">
-                      <span>${t('totalData')} ${sub.totalItems}</span>
-                      <span class="w-1.5 h-1.5 bg-m3-outline/30 rounded-full"></span>
-                      <span>${new Date(sub.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    ${sub.status === 'reviewed' ? `
-                      <div class="bg-white p-2.5 rounded-xl border border-m3-surfaceVariant text-sm flex gap-4 shadow-sm">
-                        <div class="text-m3-success font-bold px-2">✓ ${sub.acceptedCount}</div>
-                        <div class="text-m3-error font-bold px-2 border-l border-m3-surfaceVariant">✗ ${sub.rejectedCount}</div>
-                        <div class="text-m3-primary font-black px-2 border-l border-m3-surfaceVariant">৳${sub.payout}</div>
-                      </div>
-                    ` : ''}
-                    <button onclick="handleAction('viewSubDetails', '${sub.id}')" class="flex-1 md:flex-none px-5 py-3 bg-m3-secondaryContainer text-m3-onSecondaryContainer hover:opacity-90 rounded-full flex justify-center items-center gap-2 font-bold text-sm transition-all">
-                      ${icons.Eye} ${t('details')}
-                    </button>
-                  </div>
+            <div class="flex items-center gap-3">
+              ${sub.status === 'reviewed' ? `
+                <div class="text-sm font-black flex gap-4 bg-m3-surface px-4 py-2 rounded-xl">
+                   <span class="text-m3-success">✓ ${sub.acceptedCount}</span>
+                   <span class="text-m3-error">✗ ${sub.rejectedCount}</span>
+                   <span class="text-m3-primary border-l pl-4 border-m3-surfaceVariant">৳${sub.payout}</span>
                 </div>
-              `).join('')}
+              ` : ''}
+              <button onclick="window.viewSubDetails('${sub.id}')" class="bg-m3-secondaryContainer text-m3-onSecondaryContainer px-6 py-2 rounded-full font-black text-xs shadow-sm">বিস্তারিত</button>
             </div>
-          `}
-        </div>
-      `;
+          </div>
+        `).join('')}
+      </div>`;
     }
 
     function renderViewDetailsModal() {
       const sub = state.viewingSub;
       return `
-        <div class="fixed inset-0 bg-m3-onSurface/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in">
-          <div class="bg-white rounded-[2rem] shadow-xl max-w-2xl w-full p-6 md:p-10">
+        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in">
+          <div class="bg-white rounded-[2.5rem] p-8 max-w-2xl w-full shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
             <div class="flex justify-between items-center mb-6">
-              <h3 class="font-bold text-2xl text-m3-onSurface">${t('subDetails')}</h3>
-              <button onclick="handleAction('closeSubDetails')" class="text-m3-onSurfaceVariant hover:bg-m3-surfaceVariant p-2 rounded-full transition-colors">${icons.XCircle.replace('16','28').replace('16','28')}</button>
+              <h3 class="font-bold text-2xl text-m3-onSurface">ডাটা বিস্তারিত</h3>
+              <button onclick="window.closeSubDetails()" class="bg-m3-errorContainer text-m3-error p-2 rounded-full"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
-            
-            <div class="max-h-96 overflow-y-auto border border-m3-surfaceVariant rounded-[1.5rem]">
-              <table class="w-full text-sm text-left">
-                <thead class="text-xs text-m3-onSurfaceVariant bg-m3-surface uppercase sticky top-0 font-bold tracking-wider">
-                  <tr>
-                    <th class="px-5 py-4 border-b border-m3-surfaceVariant">${t('uid')}</th>
-                    <th class="px-5 py-4 border-b border-m3-surfaceVariant">${t('password')}</th>
-                    <th class="px-5 py-4 border-b border-m3-surfaceVariant w-32 text-center">${t('status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div class="flex-1 overflow-auto border border-m3-surfaceVariant rounded-2xl">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-m3-surface sticky top-0 border-b border-m3-surfaceVariant"><tr><th class="p-4 font-black text-[10px] uppercase">UID</th><th class="p-4 font-black text-[10px] uppercase">Password</th><th class="p-4 text-center font-black text-[10px] uppercase">Status</th></tr></thead>
+                <tbody class="divide-y divide-m3-surfaceVariant">
                   ${sub.items.map(it => {
                     const parts = it.text.split(' - ');
-                    const uid = parts[0] || '-';
-                    const pass = parts[1] || '-';
-                    let statusHtml = '';
-                    if(it.status === 'pending') statusHtml = `<span class="text-[#935c00] font-bold text-xs bg-[#ffdea3] px-3 py-1.5 rounded-lg">Pending</span>`;
-                    if(it.status === 'accepted') statusHtml = `<span class="text-m3-success font-bold flex items-center justify-center gap-1.5 text-xs bg-m3-successContainer px-3 py-1.5 rounded-lg">${icons.CheckCircle.replace('16','14').replace('16','14')} Acc</span>`;
-                    if(it.status === 'rejected') statusHtml = `<span class="text-m3-error font-bold flex items-center justify-center gap-1.5 text-xs bg-m3-errorContainer px-3 py-1.5 rounded-lg">${icons.XCircle.replace('16','14').replace('16','14')} Rej</span>`;
-                    
-                    return `
-                      <tr class="border-b border-m3-surfaceVariant last:border-0 hover:bg-m3-surface transition-colors">
-                        <td class="px-5 py-3 font-mono text-xs font-bold text-m3-onSurface">${uid}</td>
-                        <td class="px-5 py-3 font-mono text-xs font-bold text-m3-onSurface">${pass}</td>
-                        <td class="px-5 py-3 text-center">${statusHtml}</td>
-                      </tr>
-                    `;
+                    return `<tr>
+                      <td class="p-4 font-mono text-xs font-bold text-m3-primary">${parts[0]||'-'}</td>
+                      <td class="p-4 font-mono text-xs font-bold text-m3-onSurfaceVariant">${parts[1]||'-'}</td>
+                      <td class="p-4 text-center"><span class="text-[9px] font-black uppercase bg-m3-surfaceVariant px-2 py-0.5 rounded-md">${it.status}</span></td>
+                    </tr>`;
                   }).join('')}
                 </tbody>
               </table>
@@ -619,150 +426,63 @@
     }
 
     function renderUserWithdraw() {
-      const p = state.profile;
       return `
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 fade-in">
-          <div class="space-y-6">
-            <!-- PAYMENT METHOD -->
-            <div class="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-m3-surfaceVariant">
-              <h2 class="text-xl font-bold mb-6 text-m3-onSurface flex items-center gap-3"><span class="text-m3-primary">${icons.CreditCard}</span> ${t('payMethod')}</h2>
-              <form onsubmit="handleAction('saveMethod', event)" class="space-y-5">
-                <div>
-                  <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">${t('method')}</label>
-                  <select id="w-method" class="w-full p-4 bg-m3-surface border-none rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface">
-                    <option value="bKash" ${p.withdrawMethod==='bKash'?'selected':''}>bKash (বিকাশ)</option>
-                    <option value="Nagad" ${p.withdrawMethod==='Nagad'?'selected':''}>Nagad (নগদ)</option>
-                    <option value="Rocket" ${p.withdrawMethod==='Rocket'?'selected':''}>Rocket (রকেট)</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">${t('accNo')}</label>
-                  <input id="w-acc" type="text" required class="w-full p-4 bg-m3-surface border-none rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface" placeholder="017XXXXXXXX" value="${p.withdrawAccount || ''}">
-                </div>
-                <button type="submit" ${state.isSavingMethod ? 'disabled' : ''} class="w-full bg-m3-secondaryContainer text-m3-onSecondaryContainer p-4 rounded-full font-bold hover:opacity-90 transition-all disabled:opacity-50 mt-2">
-                  ${state.isSavingMethod ? t('processing') : t('save')}
-                </button>
-              </form>
-            </div>
-
-            <!-- WITHDRAW REQUEST -->
-            <div class="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-m3-surfaceVariant">
-              <h2 class="text-xl font-bold mb-6 text-m3-onSurface">${t('withdrawMoney')}</h2>
-              
-              <div class="bg-m3-successContainer rounded-[1.5rem] p-6 mb-8 text-center relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl transform translate-x-10 -translate-y-10"></div>
-                <p class="text-xs font-bold text-m3-onSuccessContainer/80 mb-2 uppercase tracking-widest relative z-10">${t('withdrawBal')}</p>
-                <p class="text-5xl font-black text-m3-onSuccessContainer relative z-10">৳${p.balance}</p>
-              </div>
-
-              ${state.withdrawMessage ? `
-                <div class="mb-6 p-4 rounded-2xl text-sm font-bold flex items-center gap-3 ${state.withdrawMessage.includes('সমস্যা') || state.withdrawMessage.includes('Error') || state.withdrawMessage.includes('আগে') || state.withdrawMessage.includes('first') ? 'bg-m3-errorContainer text-m3-onErrorContainer' : 'bg-m3-successContainer text-m3-onSuccessContainer'}">
-                  ${icons.CheckCircle.replace('16','20').replace('16','20')} ${state.withdrawMessage}
-                </div>
-              ` : ''}
-
-              <form onsubmit="handleAction('requestWithdraw', event)" class="space-y-6">
-                <div>
-                  <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">${t('amount')}</label>
-                  <div class="relative flex items-center">
-                    <span class="absolute left-5 text-m3-onSurface font-black text-lg">৳</span>
-                    <input id="w-amount" type="number" min="100" class="w-full p-4 pl-10 pr-24 bg-m3-surface border-none rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface text-lg" placeholder="${t('minAmnt')}">
-                    <button type="button" onclick="document.getElementById('w-amount').value='${p.balance}'" class="absolute right-3 bg-m3-primaryContainer text-m3-onPrimaryContainer px-4 py-2 rounded-xl font-bold text-xs transition-colors hover:opacity-80">
-                      ${t('withdrawAll')}
-                    </button>
-                  </div>
-                </div>
-                <button type="submit" ${p.balance < 100 ? 'disabled' : ''} class="w-full bg-m3-primary text-m3-onPrimary p-4 rounded-full font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-md">
-                  ${t('sendReq')}
-                </button>
-              </form>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 fade-in">
+          <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-m3-surfaceVariant">
+            <h2 class="font-bold text-xl mb-6 text-m3-onSurface">পেমেন্ট মেথড</h2>
+            <form onsubmit="window.saveMethod(event)" class="space-y-5">
+              <select id="wMethod" class="w-full p-4 bg-m3-surface rounded-2xl font-bold outline-none border-none ring-1 ring-m3-surfaceVariant focus:ring-2 focus:ring-m3-primary">
+                <option value="bKash" ${state.profile.withdrawMethod==='bKash'?'selected':''}>bKash</option>
+                <option value="Nagad" ${state.profile.withdrawMethod==='Nagad'?'selected':''}>Nagad</option>
+                <option value="Rocket" ${state.profile.withdrawMethod==='Rocket'?'selected':''}>Rocket</option>
+              </select>
+              <input id="wAcc" type="text" class="w-full p-4 bg-m3-surface rounded-2xl font-bold outline-none border-none ring-1 ring-m3-surfaceVariant focus:ring-2 focus:ring-m3-primary" placeholder="নাম্বার দিন" value="${state.profile.withdrawAccount || ''}" required>
+              <button type="submit" class="w-full bg-m3-secondary text-white py-4 rounded-full font-black shadow-md hover:opacity-90">সেভ করুন</button>
+            </form>
           </div>
-
-          <!-- WITHDRAWAL HISTORY -->
-          <div class="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-m3-surfaceVariant">
-            <h2 class="text-xl font-bold mb-6 text-m3-onSurface">${t('withdrawHist')}</h2>
-            ${state.withdrawals.length === 0 ? `
-              <div class="text-center py-20 bg-m3-surface rounded-3xl border border-dashed border-m3-outline/30">
-                 <div class="flex justify-center text-m3-onSurfaceVariant/50 mb-3">${icons.DollarSign.replace('18','48').replace('18','48')}</div>
-                 <p class="text-m3-onSurfaceVariant font-bold">${t('noRecord')}</p>
-              </div>
-            ` : `
-              <div class="space-y-4">
-                ${state.withdrawals.map(w => `
-                  <div class="flex justify-between items-center bg-m3-surface p-5 rounded-[1.5rem] hover:bg-m3-surfaceVariant/50 transition-all">
-                    <div>
-                      <div class="font-bold text-m3-onSurface text-xl flex items-center gap-3 mb-1">
-                        ৳${w.amount}
-                        <span class="text-xs bg-white border border-m3-surfaceVariant text-m3-onSurface px-2.5 py-1 rounded-lg font-bold tracking-wider uppercase shadow-sm">${w.method}</span>
-                      </div>
-                      <div class="text-xs font-bold text-m3-onSurfaceVariant pl-0.5">${new Date(w.createdAt).toLocaleDateString()}</div>
-                    </div>
-                    ${renderBadge(w.status)}
-                  </div>
-                `).join('')}
-              </div>
-            `}
+          <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-m3-surfaceVariant">
+            <h2 class="font-bold text-xl mb-6 text-m3-onSurface">টাকা উত্তোলন</h2>
+            <div class="bg-m3-successContainer p-6 rounded-[2rem] text-center mb-6">
+               <div class="text-[10px] font-black uppercase tracking-widest opacity-50">ব্যালেন্স</div>
+               <div class="text-5xl font-black text-m3-success">৳${state.profile.balance}</div>
+            </div>
+            ${state.withdrawMessage ? `<div class="mb-4 p-4 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-2xl text-xs font-bold text-center border border-m3-primary">${state.withdrawMessage}</div>`:''}
+            <form onsubmit="window.requestWithdraw(event)" class="space-y-5">
+              <input id="wAmount" type="number" min="100" class="w-full p-4 bg-m3-surface rounded-2xl font-bold outline-none border-none ring-1 ring-m3-surfaceVariant focus:ring-2 focus:ring-m3-primary" placeholder="৳ পরিমাণ">
+              <button type="submit" class="w-full bg-m3-primary text-white py-4 rounded-full font-black shadow-lg">রিকোয়েস্ট পাঠান</button>
+            </form>
           </div>
         </div>
       `;
     }
 
-    function renderAdminDashboard() {
-      return `
-        <div class="animate-in fade-in duration-500">
-          <div class="flex bg-m3-surfaceVariant/50 p-1.5 rounded-full mb-8 overflow-x-auto no-scrollbar w-fit mx-auto shadow-sm border border-white">
-            <button onclick="handleAction('setAdminTab', 'pending')" class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${state.adminTab === 'pending' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant hover:bg-white/50'}">${icons.List} ${t('pendWork')}</button>
-            <button onclick="handleAction('setAdminTab', 'users')" class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${state.adminTab === 'users' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant hover:bg-white/50'}">${icons.Users} ${t('userList')}</button>
-            <button onclick="handleAction('setAdminTab', 'withdrawals')" class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${state.adminTab === 'withdrawals' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant hover:bg-white/50'}">${icons.DollarSign} ${t('withReq')}</button>
-            <button onclick="handleAction('setAdminTab', 'settings')" class="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${state.adminTab === 'settings' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-sm' : 'text-m3-onSurfaceVariant hover:bg-white/50'}">${icons.Settings} ${t('settings')}</button>
-          </div>
-
-          <div class="transition-all">
-            ${state.adminTab === 'pending' ? renderAdminPending() : ''}
-            ${state.adminTab === 'users' ? renderAdminUsers() : ''}
-            ${state.adminTab === 'withdrawals' ? renderAdminWithdrawals() : ''}
-            ${state.adminTab === 'settings' ? renderAdminSettings() : ''}
-          </div>
+    function renderAdminArea() {
+       return `
+        <div class="flex bg-m3-surfaceVariant/50 p-1.5 rounded-full mb-8 overflow-x-auto no-scrollbar w-fit mx-auto shadow-sm border border-white">
+          <button onclick="window.setAdminTab('pending')" class="px-6 py-2.5 rounded-full font-bold text-sm ${state.adminTab === 'pending' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer' : 'text-m3-onSurfaceVariant'}">সাবমিশন</button>
+          <button onclick="window.setAdminTab('withdrawals')" class="px-6 py-2.5 rounded-full font-bold text-sm ${state.adminTab === 'withdrawals' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer' : 'text-m3-onSurfaceVariant'}">উইথড্র</button>
+          <button onclick="window.setAdminTab('users')" class="px-6 py-2.5 rounded-full font-bold text-sm ${state.adminTab === 'users' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer' : 'text-m3-onSurfaceVariant'}">ইউজার</button>
+          <button onclick="window.setAdminTab('settings')" class="px-6 py-2.5 rounded-full font-bold text-sm ${state.adminTab === 'settings' ? 'bg-m3-primaryContainer text-m3-onPrimaryContainer' : 'text-m3-onSurfaceVariant'}">সেটিংস</button>
         </div>
+        ${state.adminTab === 'pending' ? renderAdminPending() : ''}
+        ${state.adminTab === 'withdrawals' ? renderAdminWithdrawals() : ''}
+        ${state.adminTab === 'users' ? renderAdminUsers() : ''}
+        ${state.adminTab === 'settings' ? renderAdminSettings() : ''}
       `;
     }
 
     function renderAdminPending() {
-      const pendingCount = state.submissions.filter(s => s.status === 'pending').length;
       return `
-        <div class="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant fade-in">
-          <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-bold text-m3-onSurface">${t('adminSubList')}</h2>
-            <span class="bg-[#ffdea3] text-[#935c00] text-xs font-black px-4 py-2 rounded-full shadow-sm">Pending: ${pendingCount}</span>
-          </div>
-          
+        <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-m3-surfaceVariant fade-in">
+          <h2 class="text-2xl font-bold mb-8 text-m3-onSurface">অপেক্ষমান কাজ</h2>
           <div class="space-y-4">
             ${state.submissions.map(sub => `
-              <div class="bg-m3-surface border border-m3-surfaceVariant p-5 md:p-6 rounded-[1.5rem] flex flex-col md:flex-row justify-between items-center gap-5 hover:shadow-md transition-shadow cursor-pointer" ${sub.status === 'pending' ? `onclick="handleAction('openReview', '${sub.id}')"` : ''}>
-                <div class="w-full md:w-auto flex-grow">
-                  <div class="flex flex-wrap items-center gap-3 mb-2">
-                    <span class="font-bold text-m3-onSurface text-lg">${sub.userName}</span>
-                    <span class="text-m3-outline/30 hidden md:inline">•</span>
-                    <span class="text-xs font-bold text-m3-primary bg-m3-primaryContainer/30 px-3 py-1 rounded-lg border border-m3-primaryContainer">${sub.type === '615x' ? 'PC Clone 615x' : 'PC Clone 1000x'}</span>
-                    ${renderBadge(sub.status)}
-                  </div>
-                  <div class="text-sm font-medium text-m3-onSurfaceVariant flex items-center gap-3 pl-1">
-                    <span>${t('totalData')} ${sub.totalItems}</span>
-                    <span class="w-1.5 h-1.5 bg-m3-outline/30 rounded-full"></span>
-                    <span>${new Date(sub.createdAt).toLocaleString()}</span>
-                  </div>
+              <div class="bg-m3-surface border border-m3-surfaceVariant p-6 rounded-[2rem] flex flex-col md:flex-row justify-between md:items-center gap-4">
+                <div>
+                  <div class="font-black text-lg text-m3-onSurface">${sub.userName} <span class="text-[9px] bg-m3-primaryContainer text-m3-onPrimaryContainer px-2 py-0.5 rounded-lg ml-2 font-black">${sub.type}</span></div>
+                  <div class="text-xs text-m3-onSurfaceVariant mt-1">মোট ডাটা: ${sub.totalItems} | স্ট্যাটাস: ${sub.status.toUpperCase()}</div>
                 </div>
-                
-                ${sub.status === 'pending' ? `
-                  <button class="w-full md:w-auto px-6 py-3 bg-m3-primary text-m3-onPrimary rounded-full font-bold hover:opacity-90 text-sm flex items-center justify-center gap-2 shadow-md transition-all">
-                    ${icons.CheckSquare} ${t('reviewBtn')}
-                  </button>
-                ` : `
-                  <div class="text-sm font-bold text-m3-success bg-m3-successContainer px-5 py-3 rounded-full flex items-center gap-2">
-                    ${icons.CheckCircle} ${t('paidComp')} (৳${sub.payout})
-                  </div>
-                `}
+                ${sub.status === 'pending' ? `<button onclick="window.openReview('${sub.id}')" class="bg-m3-primary text-white px-8 py-3 rounded-full font-black text-xs shadow-md">রিভিউ করুন</button>` : `<span class="text-[9px] font-black text-m3-success uppercase bg-m3-successContainer px-4 py-2 rounded-full border border-m3-success">PAID ৳${sub.payout}</span>`}
               </div>
             `).join('')}
           </div>
@@ -771,120 +491,46 @@
     }
 
     function renderReviewModal() {
-      const task = state.reviewingTask;
-      const currentPrice = state.prices[task.type] || 0;
-      const pendingCount = task.items.filter(it => it.status === 'pending').length;
-      const acceptedCount = task.items.filter(it => it.status === 'accepted').length;
-      const rejectedCount = task.items.filter(it => it.status === 'rejected').length;
-
+      const t = state.reviewingTask;
+      const price = state.prices[t.type] || 0;
+      const pend = t.items.filter(i => i.status === 'pending').length;
+      const acc = t.items.filter(i => i.status === 'accepted').length;
       return `
-        <div class="fixed inset-0 bg-m3-onSurface/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in">
-          <div class="bg-white rounded-[2rem] p-6 md:p-10 shadow-xl border border-m3-surfaceVariant max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-start mb-8">
-              <div>
-                <h2 class="text-3xl font-black text-m3-onSurface">${t('reviewTitle')} <span class="text-m3-primary">${task.userName}</span></h2>
-                <div class="flex gap-3 mt-4 text-sm font-bold">
-                  <span class="bg-m3-surfaceVariant/50 text-m3-onSurface px-4 py-2 rounded-full border border-m3-surfaceVariant">${t('cat')} ${task.type}</span>
-                  <span class="bg-m3-primaryContainer/30 text-m3-primary px-4 py-2 rounded-full border border-m3-primaryContainer">${t('priceData')}${currentPrice} /${t('perData')}</span>
-                </div>
-              </div>
-              <button onclick="handleAction('closeReview')" class="text-m3-onSurfaceVariant bg-m3-surface hover:bg-m3-errorContainer hover:text-m3-onErrorContainer p-3 rounded-full transition-colors">${icons.XCircle.replace('16','28').replace('16','28')}</button>
+        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 fade-in">
+          <div class="bg-white rounded-[2.5rem] p-8 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="font-bold text-2xl text-m3-onSurface">রিভিউ: ${t.userName}</h3>
+              <button onclick="window.closeReview()" class="bg-m3-surfaceVariant p-2 rounded-full"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div class="bg-m3-surface border border-m3-surfaceVariant p-5 rounded-[1.5rem] text-center">
-                <div class="text-xs text-m3-onSurfaceVariant font-bold uppercase tracking-widest mb-2">${t('totalData')}</div>
-                <div class="text-4xl font-black text-m3-onSurface">${task.items.length}</div>
-              </div>
-              <div class="bg-m3-successContainer/30 border border-m3-successContainer p-5 rounded-[1.5rem] text-center">
-                <div class="text-xs text-m3-success font-bold uppercase tracking-widest mb-2">${t('accepted')}</div>
-                <div class="text-4xl font-black text-m3-success">${acceptedCount}</div>
-              </div>
-              <div class="bg-m3-errorContainer/30 border border-m3-errorContainer p-5 rounded-[1.5rem] text-center">
-                <div class="text-xs text-m3-error font-bold uppercase tracking-widest mb-2">${t('rejected')}</div>
-                <div class="text-4xl font-black text-m3-error">${rejectedCount}</div>
-              </div>
-              <div class="bg-m3-primaryContainer/30 border border-m3-primaryContainer p-5 rounded-[1.5rem] text-center">
-                <div class="text-xs text-m3-primary font-bold uppercase tracking-widest mb-2">${t('income')}</div>
-                <div class="text-4xl font-black text-m3-primary">৳${acceptedCount * currentPrice}</div>
-              </div>
+            <div class="grid grid-cols-3 gap-4 mb-8">
+               <div class="bg-m3-surface p-4 rounded-2xl text-center border border-m3-surfaceVariant"><div class="text-[9px] font-black opacity-60 uppercase">মোট</div><div class="text-xl font-black">${t.items.length}</div></div>
+               <div class="bg-m3-successContainer/30 p-4 rounded-2xl text-center border border-m3-successContainer"><div class="text-[9px] font-black text-m3-success uppercase">গৃহীত</div><div class="text-xl font-black text-m3-success">${acc}</div></div>
+               <div class="bg-m3-primaryContainer/30 p-4 rounded-2xl text-center border border-m3-primaryContainer"><div class="text-[9px] font-black text-m3-primary uppercase">৳ হবে</div><div class="text-xl font-black text-m3-primary">৳${acc * price}</div></div>
             </div>
-
-            <div class="max-h-80 overflow-y-auto border border-m3-surfaceVariant rounded-[1.5rem] mb-8">
-              <table class="w-full text-sm text-left">
-                <thead class="text-xs text-m3-onSurfaceVariant bg-m3-surface uppercase sticky top-0 font-bold tracking-wider">
-                  <tr>
-                    <th class="px-6 py-5 border-b border-m3-surfaceVariant">${t('uid')}</th>
-                    <th class="px-6 py-5 border-b border-m3-surfaceVariant">${t('password')}</th>
-                    <th class="px-6 py-5 border-b border-m3-surfaceVariant w-48 text-center">${t('action')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${task.items.map(it => {
-                     const parts = it.text.split(' - ');
-                     const uid = parts[0] || '-';
-                     const pass = parts[1] || '-';
-                     let act = '';
-                     if(it.status === 'pending') {
-                        act = `<button onclick="handleAction('reviewItem', '${it.id}', 'accepted')" class="p-2.5 text-m3-success bg-m3-successContainer hover:opacity-80 rounded-full transition-colors">${icons.CheckCircle.replace('16','20').replace('16','20')}</button>
-                               <button onclick="handleAction('reviewItem', '${it.id}', 'rejected')" class="p-2.5 text-m3-error bg-m3-errorContainer hover:opacity-80 rounded-full transition-colors">${icons.XCircle.replace('16','20').replace('16','20')}</button>`;
-                     } else if (it.status === 'accepted') {
-                        act = `<span class="text-m3-success font-bold flex items-center justify-center gap-2 text-xs bg-m3-successContainer px-4 py-2 rounded-full">${icons.CheckCircle} Acc</span>`;
-                     } else {
-                        act = `<span class="text-m3-error font-bold flex items-center justify-center gap-2 text-xs bg-m3-errorContainer px-4 py-2 rounded-full">${icons.XCircle} Rej</span>`;
-                     }
-                     return `
-                       <tr class="border-b border-m3-surfaceVariant last:border-0 hover:bg-m3-surface transition-colors">
-                         <td class="px-6 py-4 font-mono text-sm font-bold text-m3-onSurface">${uid}</td>
-                         <td class="px-6 py-4 font-mono text-sm font-bold text-m3-onSurface">${pass}</td>
-                         <td class="px-6 py-4"><div class="flex justify-center gap-3">${act}</div></td>
-                       </tr>
-                     `;
+            <div class="flex-1 overflow-auto border border-m3-surfaceVariant rounded-2xl mb-8">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-m3-surface sticky top-0 border-b border-m3-surfaceVariant"><tr><th class="p-4 font-black">UID</th><th class="p-4 font-black">Password</th><th class="p-4 text-center font-black">Action</th></tr></thead>
+                <tbody class="divide-y divide-m3-surfaceVariant">
+                  ${t.items.map(it => {
+                    const parts = it.text.split(' - ');
+                    return `<tr>
+                      <td class="p-4 font-mono font-bold text-m3-primary">${parts[0]||'-'}</td>
+                      <td class="p-4 font-mono font-bold text-m3-onSurfaceVariant">${parts[1]||'-'}</td>
+                      <td class="p-4 text-center">
+                        ${it.status === 'pending' ? `
+                          <button onclick="window.reviewItem('${it.id}', 'accepted')" class="bg-m3-success text-white px-4 py-1.5 rounded-full font-black text-[9px] shadow-sm">ACC</button>
+                          <button onclick="window.reviewItem('${it.id}', 'rejected')" class="bg-m3-error text-white px-4 py-1.5 rounded-full font-black text-[9px] shadow-sm ml-2">REJ</button>
+                        ` : `<span class="text-[9px] font-black uppercase px-3 py-1 bg-m3-surfaceVariant rounded-md">${it.status}</span>`}
+                      </td>
+                    </tr>`;
                   }).join('')}
                 </tbody>
               </table>
             </div>
-
-            ${state.adminErrorMsg ? `<div class="mb-6 text-center text-m3-error font-bold text-sm bg-m3-errorContainer p-3 rounded-full">${state.adminErrorMsg}</div>` : ''}
-
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-m3-surface p-6 rounded-[2rem] border border-m3-surfaceVariant">
-              <button onclick="handleAction('acceptRemaining')" ${pendingCount === 0 ? 'disabled' : ''} class="w-full md:w-auto px-8 py-4 bg-white border border-m3-outline text-m3-onSurface font-bold rounded-full hover:bg-m3-surfaceVariant disabled:opacity-50 transition-all shadow-sm">
-                ${t('acceptRem')} (${pendingCount})
-              </button>
-              
-              <button onclick="handleAction('finalizeReview')" ${state.isAdminProcessing ? 'disabled' : ''} class="w-full md:w-auto px-10 py-4 bg-m3-primary text-m3-onPrimary font-black rounded-full hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-3 shadow-md">
-                ${state.isAdminProcessing ? t('processing') : t('compSub')}
-              </button>
+            <div class="flex gap-4">
+               <button onclick="window.acceptAll()" class="flex-1 bg-m3-surfaceVariant text-m3-onSurfaceVariant py-4 rounded-full font-black text-xs">সবগুলো একসেপ্ট</button>
+               <button onclick="window.finalizeReview()" ${state.isAdminProcessing?'disabled':''} class="flex-1 bg-m3-primary text-white py-4 rounded-full font-black text-xs shadow-lg">রিভিউ সম্পন্ন করুন</button>
             </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderAdminUsers() {
-      return `
-        <div class="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant fade-in">
-          <h2 class="text-2xl font-bold mb-8 text-m3-onSurface">${t('userList')}</h2>
-          <div class="overflow-x-auto rounded-[1.5rem] border border-m3-surfaceVariant">
-            <table class="w-full text-sm text-left">
-              <thead class="text-xs text-m3-onSurfaceVariant bg-m3-surface uppercase font-bold tracking-wider border-b border-m3-surfaceVariant">
-                <tr>
-                  <th class="px-6 py-5">${t('name')}</th>
-                  <th class="px-6 py-5 text-right">${t('curBal')}</th>
-                  <th class="px-6 py-5 text-right">${t('totEarn')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${state.users.map(u => `
-                  <tr class="border-b border-m3-surfaceVariant last:border-0 hover:bg-m3-surface transition-colors">
-                    <td class="px-6 py-5 font-bold text-m3-onSurface text-base">${u.name}</td>
-                    <td class="px-6 py-5 text-right text-m3-primary font-black text-xl">৳${u.balance}</td>
-                    <td class="px-6 py-5 text-right text-m3-onSurfaceVariant font-bold text-base">৳${u.totalEarned}</td>
-                  </tr>
-                `).join('')}
-                ${state.users.length === 0 ? `<tr><td colspan="3" class="text-center py-12 text-m3-onSurfaceVariant font-bold">No users found.</td></tr>` : ''}
-              </tbody>
-            </table>
           </div>
         </div>
       `;
@@ -892,30 +538,30 @@
 
     function renderAdminWithdrawals() {
       return `
-        <div class="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant fade-in">
-          <h2 class="text-2xl font-bold mb-8 text-m3-onSurface">${t('withReq')}</h2>
+        <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-m3-surfaceVariant fade-in">
+          <h2 class="text-2xl font-bold mb-8 text-m3-onSurface">উত্তোলন রিকোয়েস্ট</h2>
           <div class="space-y-4">
             ${state.withdrawals.map(w => `
-              <div class="bg-m3-surface border border-m3-surfaceVariant p-5 md:p-6 rounded-[1.5rem] flex flex-col md:flex-row justify-between items-start md:items-center gap-5 hover:shadow-md transition-shadow">
-                <div>
-                  <div class="font-bold text-m3-onSurface text-lg flex items-center gap-3">
-                    ${w.userName} 
-                    <span class="text-sm font-medium text-m3-onSurfaceVariant">${t('reqBy')}</span> 
-                    <span class="text-xl font-black text-m3-success bg-m3-successContainer/50 px-3 py-1 rounded-xl border border-m3-successContainer">৳${w.amount}</span>
-                  </div>
-                  <div class="text-sm font-bold text-m3-primary mt-3 bg-m3-primaryContainer/30 inline-block px-4 py-2 rounded-xl border border-m3-primaryContainer">${t('method')}: ${w.method} - ${w.accountNo}</div>
-                  <div class="text-xs font-bold text-m3-onSurfaceVariant mt-3 pl-1">${new Date(w.createdAt).toLocaleString()}</div>
-                </div>
-                
-                <div class="flex gap-3 w-full md:w-auto mt-4 md:mt-0">
-                  ${w.status === 'pending' ? `
-                    <button onclick="handleAction('adminProcessWithdraw', '${w.id}', 'paid', ${w.amount}, '${w.userId}')" class="flex-1 md:flex-none px-8 py-3 bg-m3-primary text-m3-onPrimary rounded-full font-bold hover:opacity-90 text-sm shadow-md transition-all">Paid</button>
-                    <button onclick="handleAction('adminProcessWithdraw', '${w.id}', 'rejected', ${w.amount}, '${w.userId}')" class="flex-1 md:flex-none px-8 py-3 bg-m3-errorContainer text-m3-error rounded-full font-bold hover:opacity-90 text-sm transition-all border border-m3-errorContainer">Reject</button>
-                  ` : renderBadge(w.status)}
-                </div>
+              <div class="bg-m3-surface border border-m3-surfaceVariant p-6 rounded-[2rem] flex flex-col md:flex-row justify-between md:items-center gap-4">
+                <div><div class="font-black text-lg text-m3-onSurface">${w.userName} <span class="text-m3-success font-black text-2xl ml-2">৳${w.amount}</span></div><div class="text-[10px] font-black mt-1 text-m3-primary uppercase">${w.method}: ${w.accountNo}</div></div>
+                ${w.status === 'pending' ? `<div class="flex gap-2"><button onclick="window.processWithdraw('${w.id}', 'paid', ${w.amount}, '${w.userId}')" class="bg-m3-primary text-white px-8 py-3 rounded-full font-black text-xs shadow-md">PAID</button><button onclick="window.processWithdraw('${w.id}', 'rejected', ${w.amount}, '${w.userId}')" class="bg-m3-error text-white px-8 py-3 rounded-full font-black text-xs shadow-md">REJECT</button></div>` : `<span class="text-[9px] font-black uppercase bg-white border border-m3-surfaceVariant px-5 py-2 rounded-full">${w.status}</span>`}
               </div>
             `).join('')}
-            ${state.withdrawals.length === 0 ? `<p class="text-center text-m3-onSurfaceVariant font-bold py-12 bg-m3-surface rounded-3xl border border-dashed border-m3-outline/30">No requests</p>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAdminUsers() {
+      return `
+        <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-m3-surfaceVariant fade-in">
+          <h2 class="text-2xl font-bold mb-8 text-m3-onSurface">ইউজার লিস্ট</h2>
+          <div class="overflow-x-auto rounded-3xl border border-m3-surfaceVariant">
+            <table class="w-full text-left text-xs"><thead class="bg-m3-surface border-b border-m3-surfaceVariant"><tr><th class="p-5 font-black uppercase tracking-widest opacity-60">নাম</th><th class="p-5 font-black text-right uppercase tracking-widest opacity-60">ব্যালেন্স</th><th class="p-5 font-black text-right uppercase tracking-widest opacity-60">মোট আয়</th></tr></thead>
+              <tbody class="divide-y divide-m3-surfaceVariant">
+                ${state.users.map(u => `<tr><td class="p-5 font-black text-m3-onSurface">${u.name}</td><td class="p-5 text-right font-black text-m3-primary text-xl">৳${u.balance}</td><td class="p-5 text-right font-bold text-m3-onSurfaceVariant opacity-70">৳${u.totalEarned}</td></tr>`).join('')}
+              </tbody>
+            </table>
           </div>
         </div>
       `;
@@ -923,275 +569,50 @@
 
     function renderAdminSettings() {
       return `
-        <div class="bg-white rounded-[2rem] p-6 md:p-10 shadow-sm border border-m3-surfaceVariant max-w-lg mx-auto fade-in">
-          <h2 class="text-2xl font-bold mb-8 text-m3-onSurface text-center">
-            <span class="flex justify-center mb-3 text-m3-primary">${icons.Settings.replace('18','32').replace('18','32')}</span> 
-            ${t('priceSetting')}
-          </h2>
-          <form onsubmit="handleAction('savePrices', event)" class="space-y-6">
-            <div>
-              <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">PC Clone 615x প্রাইস (৳)</label>
-              <input id="price-615" type="number" class="w-full p-4 bg-m3-surface rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface text-lg text-center" value="${state.prices['615x']}">
+        <div class="bg-white rounded-[2.5rem] p-10 shadow-sm border border-m3-surfaceVariant max-w-md mx-auto fade-in">
+          <h2 class="text-2xl font-bold mb-8 text-center text-m3-onSurface">সিস্টেম প্রাইস</h2>
+          <form onsubmit="window.savePrices(event)" class="space-y-6">
+            <div class="bg-m3-surface p-6 rounded-[2rem]">
+              <label class="block font-black text-[10px] uppercase tracking-widest text-m3-onSurfaceVariant mb-3">615x প্রাইস (৳)</label>
+              <input id="p615" type="number" class="w-full bg-white border-none rounded-2xl p-4 font-black text-3xl text-center outline-none ring-1 ring-m3-surfaceVariant focus:ring-2 focus:ring-m3-primary" value="${state.prices['615x']}">
             </div>
-            <div>
-              <label class="block text-sm font-bold text-m3-onSurfaceVariant mb-2 pl-2">PC Clone 1000x প্রাইস (৳)</label>
-              <input id="price-1000" type="number" class="w-full p-4 bg-m3-surface rounded-2xl focus:ring-2 focus:ring-m3-primary outline-none font-bold text-m3-onSurface text-lg text-center" value="${state.prices['1000x']}">
+            <div class="bg-m3-surface p-6 rounded-[2rem]">
+              <label class="block font-black text-[10px] uppercase tracking-widest text-m3-onSurfaceVariant mb-3">1000x প্রাইস (৳)</label>
+              <input id="p1000" type="number" class="w-full bg-white border-none rounded-2xl p-4 font-black text-3xl text-center outline-none ring-1 ring-m3-surfaceVariant focus:ring-2 focus:ring-m3-primary" value="${state.prices['1000x']}">
             </div>
-            <button type="submit" ${state.isSavingMethod ? 'disabled' : ''} class="w-full bg-m3-primary text-m3-onPrimary p-4 rounded-full font-bold text-lg hover:opacity-90 transition-all disabled:opacity-50 shadow-md mt-6">
-              ${state.isSavingMethod ? t('processing') : t('save')}
-            </button>
+            <button type="submit" class="w-full bg-m3-primary text-white py-5 rounded-full font-black shadow-lg shadow-m3-primary/20 hover:opacity-90">আপডেট করুন</button>
           </form>
         </div>
       `;
     }
 
     // ==========================================
-    // Global Actions (Event Handlers)
+    // Interaction Functions
     // ==========================================
-    window.handleAction = async (action, ...args) => {
-      try {
-        if(action === 'toggleLang') {
-          state.lang = state.lang === 'bn' ? 'en' : 'bn';
-          render();
-        }
-        else if(action === 'toggleAuthMode') {
-          state.isLoginMode = !state.isLoginMode;
-          state.authError = '';
-          render();
-        }
-        else if(action === 'submitAuth') {
-          args[0].preventDefault();
-          const uid = document.getElementById('authUsername').value.trim().toLowerCase();
-          const pass = document.getElementById('authPassword').value.trim();
-          if(!uid || !pass) return;
-          state.isSubmittingAuth = true; state.authError = ''; render();
-          
-          if (!state.user) {
-             state.authError = t('loginErr');
-             state.isSubmittingAuth = false; render(); return;
-          }
-          
-          const userRef = getPublicDoc('users', uid);
-          const docSnap = await getDoc(userRef);
-
-          if (state.isLoginMode) {
-            if (docSnap.exists() && docSnap.data().password === pass) {
-               await setDoc(getPublicDoc('user_sessions', state.user.uid), { username: uid });
-               state.activeUsername = uid;
-            } else {
-               state.authError = docSnap.exists() ? t('wrongPass') : t('userNotFound');
-            }
-          } else {
-            if (docSnap.exists()) {
-               state.authError = t('userExists');
-            } else {
-               const role = uid === 'admin' ? 'admin' : 'user';
-               await setDoc(userRef, { name: uid, username: uid, password: pass, role: role, balance: 0, totalEarned: 0, withdrawMethod: '', withdrawAccount: '', createdAt: new Date().toISOString() });
-               await setDoc(getPublicDoc('user_sessions', state.user.uid), { username: uid });
-               state.activeUsername = uid;
-            }
-          }
-          state.isSubmittingAuth = false;
-          if(state.activeUsername) setupUserListeners();
-          render();
-        }
-        else if(action === 'logout') {
-          state.loading = true; render();
-          if (state.user) await deleteDoc(getPublicDoc('user_sessions', state.user.uid)).catch(e => console.error("Crash",e));
-          state.activeUsername = null; state.profile = null;
-          if(unsubSettings) unsubSettings(); if(unsubProfile) unsubProfile(); if(unsubData) unsubData();
-          state.loading = false; render();
-        }
-        else if(action === 'toggleForceUser') {
-          state.forceUserView = !state.forceUserView; render();
-        }
-        else if(action === 'setTab') {
-          state.tab = args[0]; render();
-        }
-        else if(action === 'setAdminTab') {
-          state.adminTab = args[0]; render();
-        }
-        else if(action === 'setSubmitType') {
-          state.submitType = args[0]; render();
-        }
-        else if(action === 'openPaste') {
-          state.showPasteModal = true; render();
-        }
-        else if(action === 'closePaste') {
-          state.showPasteModal = false; state.pasteText = ''; render();
-        }
-        else if(action === 'updatePasteText') {
-          state.pasteText = args[0].target.value;
-        }
-        else if(action === 'applyPaste') {
-          const rows = state.pasteText.split(/\r?\n/).map(r => r.split('\t'));
-          for (let i = 0; i < rows.length; i++) {
-            if (i >= 100) break;
-            for (let j = 0; j < rows[i].length; j++) {
-              if (j >= 4) break;
-              state.gridData[i][j] = rows[i][j] || '';
-            }
-          }
-          state.showPasteModal = false; state.pasteText = ''; render();
-        }
-        else if(action === 'resetGrid') {
-          state.gridData = Array.from({ length: 100 }, () => Array(4).fill(''));
-          state.submitMessage = t('resetSuccess');
-          render();
-          setTimeout(() => { state.submitMessage = ''; render(); }, 3000);
-        }
-        else if(action === 'submitSpreadsheet') {
-          args[0].preventDefault();
-          let allItems = [];
-          state.gridData.forEach(row => {
-            const rowText = row.filter(cell => cell.trim() !== '').join(' - ');
-            if (rowText) allItems.push(rowText);
-          });
-          if (allItems.length === 0) {
-            state.submitMessage = t('noDataErr'); render();
-            setTimeout(() => { state.submitMessage = ''; render(); }, 3000);
-            return;
-          }
-          state.isSubmittingData = true; state.submitMessage = ''; render();
-          const uniqueItems = [...new Set(allItems)];
-          const duplicatesCount = allItems.length - uniqueItems.length;
-          try {
-            const itemsToSubmit = uniqueItems.map((text, index) => ({ id: `item_${Date.now()}_${index}`, text: text, status: 'pending' }));
-            await addDoc(getPublicCollection('submissions'), {
-              userId: state.profile.id, userName: state.profile.name, type: state.submitType,
-              items: itemsToSubmit, totalItems: itemsToSubmit.length, status: 'pending', createdAt: new Date().toISOString()
-            });
-            state.gridData = Array.from({ length: 100 }, () => Array(4).fill('')); 
-            state.submitMessage = (state.lang === 'bn' ? `সফলভাবে ${uniqueItems.length} টি ডাটা সাবমিট হয়েছে!` : `Successfully submitted ${uniqueItems.length} data!`) + (duplicatesCount > 0 ? (state.lang === 'bn' ? ` (${duplicatesCount} ডুপ্লিকেট রিমুভ)` : ` (${duplicatesCount} dups removed)`) : '');
-            state.isSubmittingData = false;
-            render();
-            setTimeout(() => { state.tab = 'history'; state.submitMessage = ''; render(); }, 2500);
-          } catch(err) { console.error("Crash", err); state.submitMessage = "Error occurred"; state.isSubmittingData = false; render(); }
-        }
-        else if(action === 'viewSubDetails') {
-          state.viewingSub = state.submissions.find(s => s.id === args[0]); render();
-        }
-        else if(action === 'closeSubDetails') {
-          state.viewingSub = null; render();
-        }
-        else if(action === 'saveMethod') {
-          args[0].preventDefault();
-          state.isSavingMethod = true; render();
-          try {
-            await updateDoc(getPublicDoc('users', state.profile.id), {
-              withdrawMethod: document.getElementById('w-method').value,
-              withdrawAccount: document.getElementById('w-acc').value
-            });
-            state.withdrawMessage = state.lang === 'bn' ? 'পেমেন্ট মেথড সেভ হয়েছে!' : 'Payment method saved!';
-          } catch(err) { console.error("Crash", err); state.withdrawMessage = "Error"; }
-          state.isSavingMethod = false; render();
-          setTimeout(() => { state.withdrawMessage = ''; render(); }, 3000);
-        }
-        else if(action === 'requestWithdraw') {
-          args[0].preventDefault();
-          const wAmount = parseInt(document.getElementById('w-amount').value);
-          if (!state.profile.withdrawAccount) { state.withdrawMessage = state.lang === 'bn' ? 'আগে মেথড সেভ করুন!' : 'Save method first!'; render(); return; }
-          if (isNaN(wAmount) || wAmount < 100) { state.withdrawMessage = state.lang === 'bn' ? 'সর্বনিম্ন ১০০ টাকা।' : 'Min 100 Taka'; render(); return; }
-          if (wAmount > state.profile.balance) { state.withdrawMessage = state.lang === 'bn' ? 'পর্যাপ্ত ব্যালেন্স নেই!' : 'Insufficient balance!'; render(); return; }
-          try {
-            await updateDoc(getPublicDoc('users', state.profile.id), { balance: state.profile.balance - wAmount });
-            await addDoc(getPublicCollection('withdrawals'), {
-              userId: state.profile.id, userName: state.profile.name, amount: wAmount,
-              method: state.profile.withdrawMethod, accountNo: state.profile.withdrawAccount,
-              status: 'pending', createdAt: new Date().toISOString()
-            });
-            state.withdrawMessage = state.lang === 'bn' ? 'রিকোয়েস্ট পাঠানো হয়েছে।' : 'Request sent.';
-            render();
-            setTimeout(() => { state.withdrawMessage = ''; render(); }, 4000);
-          } catch(err) { console.error("Crash", err); state.withdrawMessage = "Error"; render(); }
-        }
-        // ADMIN ACTIONS
-        else if(action === 'openReview') {
-           state.reviewingTask = state.submissions.find(s => s.id === args[0]); render();
-        }
-        else if(action === 'closeReview') {
-           state.reviewingTask = null; render();
-        }
-        else if(action === 'reviewItem') {
-           const [id, newStatus] = args;
-           const it = state.reviewingTask.items.find(i => i.id === id);
-           if(it) it.status = newStatus;
-           render();
-        }
-        else if(action === 'acceptRemaining') {
-           state.reviewingTask.items.forEach(it => { if(it.status === 'pending') it.status = 'accepted'; });
-           render();
-        }
-        else if(action === 'finalizeReview') {
-           if (state.reviewingTask.items.some(it => it.status === 'pending')) {
-             state.adminErrorMsg = state.lang === 'bn' ? "সবগুলো রিভিউ করুন" : "Review all items"; render(); return;
-           }
-           state.adminErrorMsg = ''; state.isAdminProcessing = true; render();
-           try {
-              const acceptedCount = state.reviewingTask.items.filter(it => it.status === 'accepted').length;
-              const rejectedCount = state.reviewingTask.items.filter(it => it.status === 'rejected').length;
-              const totalPayout = acceptedCount * (state.prices[state.reviewingTask.type] || 0);
-
-              const userRef = getPublicDoc('users', state.reviewingTask.userId);
-              const userDoc = await getDoc(userRef);
-              if (userDoc.exists()) {
-                await updateDoc(userRef, {
-                  balance: (userDoc.data().balance || 0) + totalPayout,
-                  totalEarned: (userDoc.data().totalEarned || 0) + totalPayout
-                });
-              }
-              await updateDoc(getPublicDoc('submissions', state.reviewingTask.id), {
-                status: 'reviewed', items: state.reviewingTask.items, acceptedCount, rejectedCount, payout: totalPayout
-              });
-              state.reviewingTask = null;
-           } catch(err) { console.error("Crash", err); }
-           state.isAdminProcessing = false; render();
-        }
-        else if(action === 'adminProcessWithdraw') {
-           const [id, newStatus, amountStr, userId] = args;
-           const amount = parseInt(amountStr);
-           try {
-              await updateDoc(getPublicDoc('withdrawals', id), { status: newStatus });
-              if (newStatus === 'rejected') {
-                const userRef = getPublicDoc('users', userId);
-                const userDoc = await getDoc(userRef);
-                if (userDoc.exists()) await updateDoc(userRef, { balance: (userDoc.data().balance || 0) + amount });
-              }
-           } catch(err) { console.error("Crash", err); }
-        }
-        else if(action === 'savePrices') {
-           args[0].preventDefault();
-           state.isSavingMethod = true; render();
-           try {
-              await setDoc(getPublicDoc('settings', 'pricing'), {
-                 '615x': Number(document.getElementById('price-615').value),
-                 '1000x': Number(document.getElementById('price-1000').value)
-              });
-           } catch(err) { console.error("Crash", err); }
-           state.isSavingMethod = false; render();
-        }
-      } catch (globalErr) {
-        console.error("Action handler crash", globalErr);
-      }
-    };
-
-    function attachSpreadsheetListeners() {
-      const container = document.getElementById('spreadsheet-table');
-      if(!container) return;
-      container.oninput = (e) => {
-        if(e.target.classList.contains('spreadsheet-cell')) {
-           state.gridData[e.target.dataset.r][e.target.dataset.c] = e.target.value;
-        }
-      };
-      container.onpaste = (e) => {
-        if(e.target.classList.contains('spreadsheet-cell')) {
-           e.preventDefault();
-           handleAction('applyPasteFromCell', e.clipboardData.getData('text'), parseInt(e.target.dataset.r), parseInt(e.target.dataset.c));
-        }
-      };
+    function attachDOMListeners() {
+      const cells = document.querySelectorAll('.spreadsheet-cell');
+      cells.forEach(cell => {
+        cell.oninput = (e) => { state.gridData[e.target.dataset.r][e.target.dataset.c] = e.target.value; };
+        cell.onpaste = (e) => {
+          e.preventDefault();
+          const text = e.clipboardData.getData('text');
+          window.handleActionCellPaste(text, parseInt(e.target.dataset.r), parseInt(e.target.dataset.c));
+        };
+      });
     }
-    
-    // Add hidden handler for direct cell paste
+
+    window.toggleAuthMode = () => { state.isLoginMode = !state.isLoginMode; state.authError = ''; render(); };
+    window.toggleForceUser = () => { state.forceUserView = !state.forceUserView; render(); };
+    window.setTab = (t) => { state.tab = t; render(); };
+    window.setAdminTab = (t) => { state.adminTab = t; render(); };
+    window.setSubmitType = (t) => { state.submitType = t; render(); };
+    window.openPasteModal = () => { state.showPasteModal = true; render(); };
+    window.closePasteModal = () => { state.showPasteModal = false; render(); };
+    window.applyPaste = () => {
+      const val = document.getElementById('pasteArea').value;
+      window.handleActionCellPaste(val, 0, 0);
+      state.showPasteModal = false; render();
+    };
     window.handleActionCellPaste = (text, startR, startC) => {
       const rows = text.split(/\r?\n/).map(r => r.split('\t'));
       for (let i = 0; i < rows.length; i++) {
@@ -1203,123 +624,118 @@
       }
       render();
     };
-
-    const originalHandleAction = window.handleAction;
-    window.handleAction = (action, ...args) => {
-       if (action === 'applyPasteFromCell') {
-          window.handleActionCellPaste(...args);
-       } else {
-          originalHandleAction(action, ...args);
-       }
+    window.resetGrid = () => { state.gridData = Array.from({ length: 100 }, () => Array(4).fill('')); render(); };
+    
+    window.handleEmailAuth = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const pass = document.getElementById('login-password').value;
+      state.isSubmittingAuth = true; state.authError = ''; render();
+      try {
+        if (state.isLoginMode) {
+          await signInWithEmailAndPassword(authInst, email, pass);
+        } else {
+          await createUserWithEmailAndPassword(authInst, email, pass);
+        }
+      } catch (err) {
+        state.authError = "ভুল ইমেইল বা পাসওয়ার্ড!";
+        state.isSubmittingAuth = false; render();
+      }
     };
 
-    // ==========================================
-    // Initialization & Listeners
-    // ==========================================
-    async function setupUserListeners() {
-      if(unsubSettings) unsubSettings();
-      if(unsubProfile) unsubProfile();
-      if(unsubData) unsubData();
-
-      unsubSettings = onSnapshot(getPublicCollection('settings'), (snap) => {
-        let currentPrices = { '615x': 2, '1000x': 5 };
-        snap.forEach(doc => { if (doc.id === 'pricing') currentPrices = { ...currentPrices, ...doc.data() }; });
-        state.prices = currentPrices; render();
-      });
-
-      unsubProfile = onSnapshot(getPublicDoc('users', state.activeUsername), (docSnap) => {
-        if (docSnap.exists()) {
-           state.profile = { id: docSnap.id, ...docSnap.data() };
-           state.loading = false;
-           setupDataListeners();
-           render();
-        } else {
-           state.activeUsername = null; state.loading = false; render();
-        }
-      });
-    }
-
-    function setupDataListeners() {
-      if(unsubData) unsubData();
-      unsubData = onSnapshot(getPublicCollection('submissions'), (snap) => {
-        const subs = [];
-        snap.forEach(doc => {
-           const d = { id: doc.id, ...doc.data() };
-           if(state.profile.role === 'admin' || d.userId === state.profile.id) subs.push(d);
-        });
-        subs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        state.submissions = subs; 
-        
-        // Sync reviewing task if open
-        if(state.reviewingTask) {
-           const updatedTask = subs.find(s => s.id === state.reviewingTask.id);
-           if(updatedTask && updatedTask.status !== 'pending') state.reviewingTask = null; // Auto close if resolved by another admin
-        }
-        render();
-      });
-
-      onSnapshot(getPublicCollection('withdrawals'), (snap) => {
-        const ws = [];
-        snap.forEach(doc => {
-           const d = { id: doc.id, ...doc.data() };
-           if(state.profile.role === 'admin' || d.userId === state.profile.id) ws.push(d);
-        });
-        ws.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        state.withdrawals = ws; render();
-      });
-      
-      if(state.profile.role === 'admin') {
-         onSnapshot(getPublicCollection('users'), (snap) => {
-            const us = [];
-            snap.forEach(doc => { const d = { id: doc.id, ...doc.data() }; if(d.role !== 'admin') us.push(d); });
-            state.users = us; render();
-         });
-      }
-    }
-
-    async function boot() {
-      if (!isFirebaseConfigured) {
-        render(); // Render missing config immediately
-        return;
-      }
-
-      // ALWAYS authenticate safely before doing DB calls
+    window.handleGoogleAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (e) {
-        console.error("Auth init crash", e);
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(authInst, provider);
+      } catch (err) {
+        state.authError = "Google লগইন ব্যর্থ হয়েছে।";
+        render();
       }
+    };
 
-      onAuthStateChanged(auth, async (currentUser) => {
-        if (currentUser) {
-          state.user = currentUser;
-          try {
-            const sessionDoc = await getDoc(getPublicDoc('user_sessions', currentUser.uid));
-            if (sessionDoc.exists()) {
-              state.activeUsername = sessionDoc.data().username;
-              setupUserListeners();
-            } else {
-              state.loading = false; 
-              render();
-            }
-          } catch(e) { 
-            console.error("Crash loading session:", e); 
-            state.loading = false; 
-            render(); 
-          }
-        } else {
-          state.loading = false; 
-          render();
-        }
+    window.logout = () => signOut(authInst);
+
+    window.submitData = async () => {
+      let allItems = [];
+      state.gridData.forEach(row => {
+        const text = row.filter(c => c.trim() !== '').join(' - ');
+        if(text) allItems.push(text);
       });
-    }
+      if (allItems.length === 0) return;
+      state.isSubmittingData = true; render();
+      try {
+        await addDoc(getCol('submissions'), {
+          userId: state.user.uid,
+          userName: state.profile.name,
+          type: state.submitType,
+          items: allItems.map(t => ({text: t, status: 'pending'})),
+          totalItems: allItems.length,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+        state.gridData = Array.from({ length: 100 }, () => Array(4).fill('')); 
+        state.submitMessage = "সফলভাবে সাবমিট হয়েছে!";
+        state.isSubmittingData = false; render();
+        setTimeout(() => { state.tab = 'history'; state.submitMessage = ''; render(); }, 1500);
+      } catch(err) { state.isSubmittingData = false; render(); }
+    };
+
+    window.viewSubDetails = (id) => { state.viewingSub = state.submissions.find(s=>s.id===id); render(); };
+    window.closeSubDetails = () => { state.viewingSub = null; render(); };
+    
+    window.saveMethod = async (e) => {
+      e.preventDefault(); 
+      await updateDoc(getDocRef('users', state.user.uid), { withdrawMethod: document.getElementById('wMethod').value, withdrawAccount: document.getElementById('wAcc').value }).catch(e=>e);
+      alert("পেমেন্ট মেথড সেভ হয়েছে!");
+    };
+    window.requestWithdraw = async (e) => {
+      e.preventDefault();
+      const amount = parseInt(document.getElementById('wAmount').value);
+      if(!state.profile.withdrawAccount) { state.withdrawMessage="আগে পেমেন্ট মেথড সেভ করুন!"; render(); return; }
+      if(amount > state.profile.balance || amount < 100) { state.withdrawMessage="পরিমাণ সঠিক নয়!"; render(); return; }
+      try {
+        await updateDoc(getDocRef('users', state.user.uid), { balance: state.profile.balance - amount });
+        await addDoc(getCol('withdrawals'), { userId: state.user.uid, userName: state.profile.name, amount, method: state.profile.withdrawMethod, accountNo: state.profile.withdrawAccount, status: 'pending', createdAt: new Date().toISOString() });
+        state.withdrawMessage="রিকোয়েস্ট পাঠানো হয়েছে!"; render(); setTimeout(()=> { state.withdrawMessage=''; render(); }, 3000);
+      } catch(err) { console.error(err); }
+    };
+
+    window.openReview = (id) => { state.reviewingTask = JSON.parse(JSON.stringify(state.submissions.find(s=>s.id===id))); render(); };
+    window.closeReview = () => { state.reviewingTask = null; render(); };
+    window.reviewItem = (id, status) => { const it = state.reviewingTask.items.find(i=>i.id===id); if(it) it.status = status; render(); };
+    window.acceptAll = () => { state.reviewingTask.items.forEach(i => { if(i.status==='pending') i.status='accepted'; }); render(); };
+    window.finalizeReview = async () => {
+      if(state.reviewingTask.items.some(i=>i.status==='pending')) { state.adminErrorMsg = "সবগুলো রিভিউ করুন!"; render(); return; }
+      state.isAdminProcessing = true; render();
+      try {
+        const accCount = state.reviewingTask.items.filter(i=>i.status==='accepted').length;
+        const rejCount = state.reviewingTask.items.filter(i=>i.status==='rejected').length;
+        const payout = accCount * (state.prices[state.reviewingTask.type] || 0);
+        const uRef = getDocRef('users', state.reviewingTask.userId);
+        const uDoc = await getDoc(uRef);
+        if(uDoc.exists()) await updateDoc(uRef, { balance: (uDoc.data().balance||0)+payout, totalEarned: (uDoc.data().totalEarned||0)+payout });
+        await updateDoc(getDocRef('submissions', state.reviewingTask.id), { status: 'reviewed', items: state.reviewingTask.items, acceptedCount: accCount, rejectedCount: rejCount, payout });
+        state.reviewingTask = null;
+      } catch(e) { console.error(e); }
+      state.isAdminProcessing = false; render();
+    };
+
+    window.processWithdraw = async (id, status, amount, userId) => {
+      await updateDoc(getDocRef('withdrawals', id), { status });
+      if(status === 'rejected') {
+         const uRef = getDocRef('users', userId);
+         const uDoc = await getDoc(uRef);
+         if(uDoc.exists()) await updateDoc(uRef, { balance: (uDoc.data().balance||0) + amount });
+      }
+    };
+
+    window.savePrices = async (e) => {
+      e.preventDefault();
+      await setDoc(getDocRef('settings', 'pricing'), { '615x': Number(document.getElementById('p615').value), '1000x': Number(document.getElementById('p1000').value) });
+      alert("সিস্টেম প্রাইস আপডেট হয়েছে!");
+    };
 
     boot();
-
   </script>
 </body>
 </html>
